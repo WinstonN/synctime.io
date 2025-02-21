@@ -337,10 +337,52 @@ body {
 .timezone-entry {
     position: relative;
     background-color: var(--card-background);
-    padding: 1.5rem 2.5rem;
+    padding: 1.25rem 2.5rem;
     border-radius: 8px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.timezone-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+    padding-right: 1.5rem;
+}
+
+.timezone-left {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.timezone-name {
+    font-size: 1rem;
+    font-weight: 500;
+    margin-bottom: 0.2rem;
+}
+
+.timezone-details {
+    color: #666;
+    font-size: 0.85rem;
+}
+
+.timezone-time {
+    text-align: right;
+    min-width: 120px;
+}
+
+.timezone-hour {
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 0.2rem;
+}
+
+.timezone-date {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 0.5rem;
 }
 
 .drag-handle {
@@ -355,48 +397,6 @@ body {
     justify-content: center;
     font-size: 1.5rem;
     padding: 0.5rem;
-}
-
-.timezone-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 2rem;
-    padding-right: 1.5rem;
-}
-
-.timezone-left {
-    display: flex;
-    gap: 0.75rem;
-}
-
-.timezone-name {
-    font-size: 1.1rem;
-    font-weight: 500;
-    margin-bottom: 0.25rem;
-}
-
-.timezone-details {
-    color: #666;
-    font-size: 0.9rem;
-}
-
-.timezone-time {
-    text-align: right;
-    min-width: 120px;
-}
-
-.timezone-hour {
-    font-size: 1.5rem;
-    font-weight: 500;
-    color: #333;
-    margin-bottom: 0.25rem;
-}
-
-.timezone-date {
-    font-size: 0.875rem;
-    color: #666;
-    margin-bottom: 0.75rem;
 }
 
 .timezone-entry:hover {
