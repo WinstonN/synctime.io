@@ -16,6 +16,10 @@ class TimeZoneManager {
         this.timeFormatEl = document.getElementById('timeFormat');
         this.timeFormatTextEl = document.getElementById('timeFormatText');
         this.removeAllButton = document.getElementById('removeAll');
+        this.timeGridBody = document.getElementById('timeGridBody');
+        
+        // Initialize tabs
+        this.initializeTabs();
         
         // Initialize event listeners
         this.initializeEventListeners();
@@ -27,6 +31,141 @@ class TimeZoneManager {
         this.initialized = true;
     }
     
+    initializeTabs() {
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        // Initialize hours header
+        const hoursHeader = document.querySelector('.hours-header');
+        if (hoursHeader) {
+            for (let i = 0; i < 24; i++) {
+                const th = document.createElement('th');
+                th.textContent = this.use24Hour ? 
+                    i.toString().padStart(2, '0') : 
+                    (i === 0 ? '12am' : i < 12 ? `${i}am` : i === 12 ? '12pm' : `${i-12}pm`);
+                hoursHeader.appendChild(th);
+            }
+        }
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabId = button.getAttribute('data-tab');
+                
+                // Update button states
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                
+                // Update content visibility
+                tabContents.forEach(content => {
+                    if (content.id === tabId) {
+                        content.classList.add('active');
+                        if (tabId === 'meeting-planner') {
+                            this.updateTimeGrid();
+                        }
+                    } else {
+                        content.classList.remove('active');
+                    }
+                });
+            });
+        });
+    }
+
+    updateTimeGrid() {
+        if (!this.timeGridBody) return;
+        
+        // Clear existing content
+        this.timeGridBody.innerHTML = '';
+        
+        // Update location headers
+        const locationHeadersRow = document.getElementById('locationHeaders');
+        if (locationHeadersRow) {
+            // Clear existing headers except the first empty cell
+            while (locationHeadersRow.children.length > 1) {
+                locationHeadersRow.removeChild(locationHeadersRow.lastChild);
+            }
+            
+            // Add location headers with timezone offset
+            Array.from(this.timezones).forEach(timezone => {
+                const th = document.createElement('th');
+                const tzData = this.getTimezoneData(timezone);
+                const date = new Date();
+                const offset = -date.getTimezoneOffset() / 60;
+                const tzOffset = this.getTimezoneOffset(timezone);
+                th.textContent = `${tzData.city}, ${tzData.country} (UTC${tzOffset >= 0 ? '+' : ''}${tzOffset})`;
+                locationHeadersRow.appendChild(th);
+            });
+        }
+        
+        // Create 24 rows for each hour
+        for (let i = 0; i < 24; i++) {
+            const row = document.createElement('tr');
+            
+            // Calculate the UTC time for this row
+            const utcDate = new Date(this.selectedDate);
+            utcDate.setHours(i, 0, 0, 0);
+            
+            // Add UTC time cell with date
+            const utcCell = document.createElement('td');
+            utcCell.className = 'utc-time';
+            const dateStr = utcDate.toLocaleDateString('en-US', { 
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            utcCell.textContent = `${dateStr} at ${i.toString().padStart(2, '0')}:00:00`;
+            row.appendChild(utcCell);
+            
+            // Add cells for each timezone
+            Array.from(this.timezones).forEach(timezone => {
+                const cell = document.createElement('td');
+                cell.className = 'time-cell';
+                
+                // Convert UTC time to timezone time using moment-timezone
+                const tzTime = moment.utc(utcDate).tz(timezone);
+                const tzHour = tzTime.hour();
+                
+                // Determine cell type based on hour
+                if (tzHour >= 9 && tzHour < 17) {
+                    cell.classList.add('working-hours');
+                } else if ((tzHour >= 7 && tzHour < 9) || (tzHour >= 17 && tzHour < 19)) {
+                    cell.classList.add('off-hours');
+                } else {
+                    cell.classList.add('sleeping-hours');
+                }
+                
+                // Format the time
+                cell.textContent = tzTime.format(this.use24Hour ? 'HH:mm' : 'hh:mm A');
+                
+                // Add click handler for time details
+                cell.addEventListener('click', () => {
+                    this.showTimeDetails(utcDate, timezone);
+                });
+                
+                row.appendChild(cell);
+            });
+            
+            this.timeGridBody.appendChild(row);
+        }
+    }
+
+    getTimezoneOffset(timezone) {
+        const date = new Date();
+        const tzTime = moment.tz(date, timezone);
+        return tzTime.utcOffset() / 60;
+    }
+
+    showTimeDetails(utcDate, timezone) {
+        const allTimezones = Array.from(this.timezones);
+        const details = allTimezones.map(tz => {
+            const tzTime = moment.utc(utcDate).tz(tz);
+            const tzData = this.getTimezoneData(tz);
+            return `${tzData.city}: ${tzTime.format(this.use24Hour ? 'HH:mm' : 'hh:mm A')}`;
+        }).join('\n');
+        
+        alert(`Meeting times:\n${details}`);
+    }
+
     initializeEventListeners() {
         if (this.searchInput) {
             this.searchInput.addEventListener('input', () => {
@@ -396,7 +535,7 @@ class TimeZoneManager {
             this.selectedDate = selectedDate;
             
             this.updateDatePickerDisplay(dateText);
-            this.updateAllTimezones();
+            this.updateAllDisplays();
         });
     }
 
@@ -627,9 +766,45 @@ class TimeZoneManager {
         if (this.timeFormatTextEl) {
             this.timeFormatTextEl.textContent = this.use24Hour ? '24h' : '12h';
         }
-        this.render();
+        
+        // Update time displays
+        this.updateAllDisplays();
     }
 
+    updateAllDisplays() {
+        // Update timezone displays
+        const entries = document.querySelectorAll('.timezone-entry');
+        entries.forEach(entry => {
+            const timezone = entry.getAttribute('data-timezone');
+            const timeDisplay = entry.querySelector('.timezone-hour');
+            const slider = entry.querySelector('.timeline-slider');
+            
+            if (timeDisplay && slider) {
+                const value = parseInt(slider.value);
+                const minutes = value * 15;
+                const hours = Math.floor(minutes / 60);
+                const mins = minutes % 60;
+                
+                const date = new Date(this.selectedDate);
+                date.setHours(hours, mins, 0, 0);
+                
+                const timeFormatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone: timezone,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: !this.use24Hour
+                });
+                
+                timeDisplay.textContent = timeFormatter.format(date);
+            }
+        });
+
+        // Update meeting planner grid if visible
+        if (document.querySelector('#meeting-planner').classList.contains('active')) {
+            this.updateTimeGrid();
+        }
+    }
+    
     removeAllTimezones() {
         this.timezones.clear();
         this.render();

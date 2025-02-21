@@ -36,12 +36,59 @@
                 </button>
             </div>
         </header>
-        
-        <main>
+
+        <div class="tabs">
+            <button class="tab-button active" data-tab="time-converter">
+                <span class="material-icons">schedule</span>
+                Time Converter
+            </button>
+            <button class="tab-button" data-tab="meeting-planner">
+                <span class="material-icons">event</span>
+                Meeting Planner
+            </button>
+        </div>
+
+        <div class="tab-content active" id="time-converter">
             <div class="timezone-list" id="timezoneList">
                 <!-- Timezone entries will be added here dynamically -->
             </div>
-        </main>
+        </div>
+
+        <div class="tab-content" id="meeting-planner">
+            <div class="meeting-planner-content">
+                <div class="time-grid">
+                    <table class="time-table">
+                        <thead>
+                            <tr>
+                                <th class="utc-time-header">UTC-time</th>
+                                <th colspan="24">Choose a suitable time, using the color code for orientation (legend below). Click the time slot for a detailed summary of your meeting times.</th>
+                            </tr>
+                            <tr id="locationHeaders">
+                                <th></th>
+                                <!-- Location headers will be added dynamically -->
+                            </tr>
+                        </thead>
+                        <tbody id="timeGridBody">
+                            <!-- Time grid rows will be added dynamically -->
+                        </tbody>
+                    </table>
+                    <div class="time-legend">
+                        <div class="legend-item">
+                            <div class="legend-color working-hours"></div>
+                            <span>Working Hours (9:00 - 17:00)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color off-hours"></div>
+                            <span>Early/Late Hours</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color sleeping-hours"></div>
+                            <span>Night Hours (23:00 - 6:00)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     <script src="country-flags.js"></script>
     <script src="timezone-data.js"></script>

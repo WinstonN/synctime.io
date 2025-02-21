@@ -471,6 +471,7 @@ body {
         #42a5f5 75%,    /* afternoon */
         #1a237e 100%    /* night */
     );
+    border-radius: 3px;
     outline: none;
     margin: 0 12px;
     padding: 0;
@@ -688,26 +689,191 @@ main {
     margin-top: 2rem;
 }
 
-@media (max-width: 600px) {
-    .timezone-entry {
-        padding: 1rem 2rem;
-    }
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 1rem;
+    margin: 1rem 0;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0;
+}
 
-    .timezone-info {
-        margin-bottom: 1.5rem;
-    }
+.tab-button {
+    background: none;
+    border: none;
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+    color: #666;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    position: relative;
+    transition: all 0.2s ease;
+}
 
-    .timeline-hours, .hour-markers {
-        font-size: 0.7rem;
-    }
+.tab-button .material-icons {
+    font-size: 1.25rem;
+}
 
-    .drag-handle {
-        left: 0.5rem;
-    }
+.tab-button:hover {
+    color: var(--primary-color);
+}
 
-    .more-button {
-        right: 0.5rem;
-    }
+.tab-button.active {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.tab-button.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--primary-color);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Meeting Planner Styles */
+.meeting-planner-content {
+    background: var(--card-background);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: auto;
+    padding: 1rem;
+}
+
+.time-grid {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.time-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1000px;
+    margin-bottom: 1rem;
+}
+
+.time-table th,
+.time-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border: 1px solid var(--border-color);
+    font-size: 0.9rem;
+}
+
+.time-table thead th {
+    background-color: #f8f9fa;
+    font-weight: 500;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    text-align: center;
+}
+
+#locationHeaders th {
+    padding: 0.75rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--text-color);
+    border-bottom: 2px solid var(--border-color);
+}
+
+#locationHeaders th:first-child {
+    text-align: left;
+}
+
+.utc-time {
+    color: #666;
+    font-weight: 500;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.time-table thead th {
+    background-color: #f8f9fa;
+    font-weight: 500;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    text-align: center;
+}
+
+.time-table tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.time-table td.time-cell {
+    white-space: nowrap;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.time-table td.time-cell:hover {
+    opacity: 0.9;
+}
+
+.time-table td.time-cell.working-hours {
+    background-color: #e6ffe6;  /* Lighter green */
+}
+
+.time-table td.time-cell.off-hours {
+    background-color: #fff9e6;  /* Lighter orange */
+}
+
+.time-table td.time-cell.sleeping-hours {
+    background-color: #ffe6e6;  /* Lighter red */
+}
+
+.time-legend {
+    display: flex;
+    gap: 2rem;
+    padding: 1rem;
+    border-top: 1px solid var(--border-color);
+    margin-top: 1rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.legend-color {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.legend-color.working-hours {
+    background-color: #e6ffe6;  /* Lighter green */
+}
+
+.legend-color.off-hours {
+    background-color: #fff9e6;  /* Lighter orange */
+}
+
+.legend-color.sleeping-hours {
+    background-color: #ffe6e6;  /* Lighter red */
+}
+
+.utc-time {
+    color: #666;
+    font-weight: 500;
 }
 
 .timezone-entry * {
@@ -728,4 +894,26 @@ main {
 
 .timezone-entry.drag-over {
     border-top: 2px solid var(--primary-color);
+}
+
+@media (max-width: 600px) {
+    .timezone-entry {
+        padding: 1rem 2rem;
+    }
+
+    .timezone-info {
+        margin-bottom: 1.5rem;
+    }
+
+    .timeline-hours, .hour-markers {
+        font-size: 0.7rem;
+    }
+
+    .drag-handle {
+        left: 0.5rem;
+    }
+
+    .more-button {
+        right: 0.5rem;
+    }
 }
