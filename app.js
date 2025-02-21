@@ -5,10 +5,11 @@ class TimeZoneManager {
         this.use24Hour = true;
         this.selectedDate = new Date();
         this.timeUpdateInterval = null;
-        this.activeSlider = null;  // Track the currently active slider
-        this.isUpdating = false;   // Guard against recursive updates
+        this.activeSlider = null;
+        this.isUpdating = false;
+        this.pendingTimes = null; // New property to store pending times
         
-        // Get DOM elements
+        // Get DOM elements first
         this.container = document.querySelector('.container');
         this.searchInput = document.getElementById('timezoneSearch');
         this.searchResults = document.getElementById('searchResults');
@@ -18,44 +19,305 @@ class TimeZoneManager {
         this.removeAllButton = document.getElementById('removeAll');
         this.timeGridBody = document.getElementById('timeGridBody');
         
-        // Initialize tabs
-        this.initializeTabs();
+        // Create debounced update function
+        this.debouncedUpdateUrl = this.debounce(() => {
+            this.updateStateUrl();
+        }, 500);
         
-        // Initialize event listeners
+        // Set up URL state handling
+        this.setupStateChangeHandlers();
+        
+        // Load state from URL if present and render
+        if (window.location.search) {
+            this.loadStateFromUrl();
+        }
+        
+        // Initialize components
+        this.initializeTabs();
         this.initializeEventListeners();
         this.initializeDatePicker();
-        
-        // Start the current time update interval
         this.startCurrentTimeUpdate();
+        
+        // Initial render
+        this.render();
         
         this.initialized = true;
     }
     
+    loadStateFromUrl() {
+        console.log('Loading state from URL');
+        const params = new URLSearchParams(window.location.search);
+        let stateChanged = false;
+        
+        // Load timezones and their times
+        const zones = params.get('zones');
+        console.log('URL zones:', zones);
+        
+        if (zones) {
+            const zoneList = zones.split(',');
+            console.log('Parsed zones:', zoneList);
+            
+            zoneList.forEach(zoneData => {
+                // Handle both encoded and unencoded @ symbols
+                const atIndex = zoneData.indexOf('@');
+                if (atIndex === -1) {
+                    const zone = decodeURIComponent(zoneData);
+                    console.log('Processing zone without time:', zone);
+                    if (this.isValidTimezone(zone)) {
+                        console.log('Zone is valid:', zone);
+                        this.timezones.add(zone);
+                        stateChanged = true;
+                    }
+                } else {
+                    const zone = decodeURIComponent(zoneData.substring(0, atIndex));
+                    const time = decodeURIComponent(zoneData.substring(atIndex + 1));
+                    console.log('Processing zone:', zone, 'time:', time);
+                    
+                    if (this.isValidTimezone(zone)) {
+                        console.log('Zone is valid:', zone);
+                        this.timezones.add(zone);
+                        stateChanged = true;
+                        
+                        // If time is specified, set it after render
+                        if (time) {
+                            const [hours, minutes] = time.split(':').map(Number);
+                            // Convert to slider intervals (15-minute intervals, 0-95)
+                            const sliderValue = (hours * 4) + Math.floor(minutes / 15);
+                            console.log('Storing time for', zone, ':', hours, ':', minutes, '=', sliderValue, 'intervals');
+                            
+                            // Store the time to be set after render
+                            if (!this.pendingTimes) {
+                                this.pendingTimes = new Map();
+                            }
+                            this.pendingTimes.set(zone, sliderValue);
+                        }
+                    } else {
+                        console.log('Invalid timezone:', zone);
+                    }
+                }
+            });
+        }
+        
+        // Load date
+        const date = params.get('date');
+        if (date) {
+            const parsedDate = new Date(date);
+            if (!isNaN(parsedDate.getTime())) {
+                this.selectedDate = parsedDate;
+                stateChanged = true;
+                console.log('Set date:', parsedDate);
+            }
+        }
+        
+        // Load time format
+        const format = params.get('format');
+        if (format) {
+            const use24h = format === '24h';
+            if (this.use24Hour !== use24h) {
+                this.use24Hour = use24h;
+                if (this.timeFormatTextEl) {
+                    this.timeFormatTextEl.textContent = this.use24Hour ? '24h' : '12h';
+                }
+                stateChanged = true;
+                console.log('Set time format:', use24h ? '24h' : '12h');
+            }
+        }
+        
+        // Load active tab
+        const tab = params.get('tab');
+        if (tab && tab !== 'undefined') {
+            this.activeTab = tab;
+            console.log('Set active tab:', tab);
+        }
+        
+        // Render if state changed
+        if (stateChanged) {
+            console.log('State changed, rendering...');
+            this.render();
+            
+            // Apply pending times after render
+            if (this.pendingTimes && this.pendingTimes.size > 0) {
+                console.log('Applying pending times:', this.pendingTimes);
+                setTimeout(() => {
+                    // Get first timezone as reference
+                    const [refZone, refValue] = Array.from(this.pendingTimes.entries())[0];
+                    console.log('Using reference timezone:', refZone, 'with value:', refValue);
+                    
+                    const entry = document.querySelector(`[data-timezone="${refZone}"]`);
+                    if (entry) {
+                        const slider = entry.querySelector('input[type="range"]');
+                        if (slider) {
+                            console.log('Setting reference slider value:', refValue);
+                            
+                            // Set as active slider and trigger input handler
+                            this.activeSlider = slider;
+                            slider.value = refValue;
+                            this.handleSliderEvent(slider, refZone);
+                        }
+                    }
+                    
+                    this.pendingTimes.clear();
+                    console.log('Cleared pending times');
+                }, 100);
+            }
+        }
+    }
+
+    isValidTimezone(timezone) {
+        try {
+            console.log('Validating timezone:', timezone);
+            Intl.DateTimeFormat(undefined, { timeZone: timezone });
+            console.log('Timezone is valid:', timezone);
+            return true;
+        } catch (e) {
+            console.log('Invalid timezone:', timezone);
+            return false;
+        }
+    }
+
+    render() {
+        if (!this.timezonesContainer) return;
+        
+        // Clear existing entries
+        this.timezonesContainer.innerHTML = '';
+        
+        // Create new entries for each timezone
+        Array.from(this.timezones).forEach(timezone => {
+            const entry = this.createTimezoneEntry(timezone);
+            this.timezonesContainer.appendChild(entry);
+        });
+        
+        // Update the time grid if we're in meeting planner mode
+        const activeTab = document.querySelector('.tab-button.active');
+        if (activeTab && activeTab.getAttribute('data-tab') === 'meeting-planner') {
+            this.updateTimeGrid();
+        }
+    }
+
+    findTimezoneData(timezone) {
+        return timezoneData.find(tz => 
+            tz.timezones.some(t => t === timezone)
+        );
+    }
+
+    setupStateChangeHandlers() {
+        // Debounce URL updates to avoid too many history entries
+        let updateTimeout;
+        const updateUrl = () => {
+            if (!this.initialized) return;
+            
+            clearTimeout(updateTimeout);
+            updateTimeout = setTimeout(() => {
+                const params = new URLSearchParams();
+                
+                // Add timezones with their current times
+                if (this.timezones.size > 0) {
+                    const timezones = Array.from(this.timezones).map(timezone => {
+                        let time = timezone;
+                        const entry = document.querySelector(`[data-timezone="${timezone}"]`);
+                        if (entry) {
+                            const slider = entry.querySelector('input[type="range"]');
+                            if (slider) {
+                                const sliderValue = parseInt(slider.value);
+                                const hours = Math.floor(sliderValue / 4);
+                                const minutes = (sliderValue % 4) * 15;
+                                time = `${timezone}@${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                            }
+                        }
+                        return time;
+                    });
+                    params.set('zones', timezones.join(','));
+                }
+                
+                // Add date if not today
+                if (this.selectedDate) {
+                    params.set('date', this.selectedDate.toISOString().split('T')[0]);
+                }
+                
+                // Add time format
+                params.set('format', this.use24Hour ? '24h' : '12h');
+                
+                // Add active tab
+                params.set('tab', this.activeTab);
+                
+                // Update URL without reloading
+                const search = params.toString();
+                const newUrl = `${window.location.pathname}${search ? '?' + search : ''}`;
+                window.history.replaceState(null, '', newUrl);
+            }, 500);
+        };
+
+        // Add state change listener
+        this.onStateChange = () => {
+            if (this.initialized) {
+                this.debouncedUpdateUrl();
+            }
+        };
+    }
+
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    updateStateUrl() {
+        console.log('[updateStateUrl] Updating URL state');
+        const params = new URLSearchParams();
+        
+        // Add timezones with their current times
+        if (this.timezones.size > 0) {
+            const timezones = Array.from(this.timezones).map(timezone => {
+                let time = timezone;
+                const entry = document.querySelector(`[data-timezone="${timezone}"]`);
+                if (entry) {
+                    const slider = entry.querySelector('input[type="range"]');
+                    if (slider) {
+                        const sliderValue = parseInt(slider.value);
+                        const hours = Math.floor(sliderValue / 4);
+                        const minutes = (sliderValue % 4) * 15;
+                        time = `${timezone}@${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                    }
+                }
+                return time;
+            });
+            params.set('zones', timezones.join(','));
+        }
+        
+        // Add date if not today
+        if (this.selectedDate) {
+            params.set('date', this.selectedDate.toISOString().split('T')[0]);
+        }
+        
+        // Add time format
+        params.set('format', this.use24Hour ? '24h' : '12h');
+        
+        // Add active tab
+        params.set('tab', this.activeTab);
+        
+        // Update URL without reloading
+        const search = params.toString();
+        const newUrl = `${window.location.pathname}${search ? '?' + search : ''}`;
+        window.history.replaceState(null, '', newUrl);
+    }
+
     initializeTabs() {
         const tabButtons = document.querySelectorAll('.tab-button');
         const tabContents = document.querySelectorAll('.tab-content');
-
-        // Initialize hours header
-        const hoursHeader = document.querySelector('.hours-header');
-        if (hoursHeader) {
-            for (let i = 0; i < 24; i++) {
-                const th = document.createElement('th');
-                th.textContent = this.use24Hour ? 
-                    i.toString().padStart(2, '0') : 
-                    (i === 0 ? '12am' : i < 12 ? `${i}am` : i === 12 ? '12pm' : `${i-12}pm`);
-                hoursHeader.appendChild(th);
-            }
-        }
 
         tabButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const tabId = button.getAttribute('data-tab');
                 
-                // Update button states
                 tabButtons.forEach(btn => btn.classList.remove('active'));
                 button.classList.add('active');
                 
-                // Update content visibility
                 tabContents.forEach(content => {
                     if (content.id === tabId) {
                         content.classList.add('active');
@@ -66,8 +328,20 @@ class TimeZoneManager {
                         content.classList.remove('active');
                     }
                 });
+                
+                if (this.initialized) {
+                    this.onStateChange();
+                }
             });
         });
+
+        // Set initial active tab from URL
+        if (this.activeTab) {
+            const tab = document.querySelector(`[data-tab="${this.activeTab}"]`);
+            if (tab) {
+                tab.click();
+            }
+        }
     }
 
     updateTimeGrid() {
@@ -195,70 +469,63 @@ class TimeZoneManager {
         if (this.timezonesContainer) {
             this.timezonesContainer.addEventListener('input', (e) => {
                 if (e.target.classList.contains('timeline-slider')) {
-                    this.handleSliderEvent(e);
+                    this.handleSliderEvent(e.target, e.target.closest('.timezone-entry').getAttribute('data-timezone'));
                 }
             });
 
             this.timezonesContainer.addEventListener('change', (e) => {
                 if (e.target.classList.contains('timeline-slider')) {
-                    this.handleSliderEvent(e);
+                    this.handleSliderEvent(e.target, e.target.closest('.timezone-entry').getAttribute('data-timezone'));
                 }
             });
         }
     }
 
-    handleSliderEvent(e) {
-        if (this.isUpdating) {
-            console.log('[handleSliderEvent] Blocked by isUpdating guard');
+    handleSliderEvent(slider, timezone) {
+        console.log('[handleSliderEvent] Starting with:', {
+            timezone,
+            sliderValue: slider.value,
+            selectedDate: this.selectedDate
+        });
+
+        if (!this.selectedDate) {
+            console.warn('[handleSliderEvent] No selected date');
             return;
         }
-        
-        const slider = e.target;
-        const entry = slider.closest('.timezone-entry');
-        if (!entry) {
-            console.error('[handleSliderEvent] No timezone entry found for slider');
-            return;
-        }
-        
-        const timezone = entry.getAttribute('data-timezone');
-        if (!timezone) {
-            console.error('[handleSliderEvent] No timezone attribute found');
-            return;
-        }
-        
+
         const value = parseInt(slider.value);
-        const minutes = value * 15;
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
+        const hours = Math.floor(value / 4);
+        const minutes = (value % 4) * 15;
 
         console.log('[handleSliderEvent] Processing slider event:', {
             timezone,
-            sliderValue: value,
-            totalMinutes: minutes,
+            value,
+            totalMinutes: hours * 60 + minutes,
             hours,
-            mins
+            mins: minutes
         });
 
         try {
-            // Get the current date in the source timezone
+            // Get the current date components in the source timezone
             const formatter = new Intl.DateTimeFormat('en-US', {
                 timeZone: timezone,
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit'
             });
+
             const dateParts = formatter.formatToParts(this.selectedDate);
             const year = parseInt(dateParts.find(p => p.type === 'year').value);
             const month = parseInt(dateParts.find(p => p.type === 'month').value) - 1;
             const day = parseInt(dateParts.find(p => p.type === 'day').value);
 
             // Create a date object representing the local time in the source timezone
-            const localDate = new Date(Date.UTC(year, month, day, hours, mins));
+            const localDate = new Date(Date.UTC(year, month, day, hours, minutes));
 
             console.log('[handleSliderEvent] Created local date:', {
                 timezone,
                 localDate: localDate.toISOString(),
-                components: { year, month, day, hours, mins }
+                components: { year, month, day, hours, minutes }
             });
 
             // Convert to UTC by applying the timezone offset
@@ -268,28 +535,29 @@ class TimeZoneManager {
                 minute: '2-digit',
                 hour12: false
             });
+
             const timeParts = tzFormatter.formatToParts(localDate);
             const sourceHours = parseInt(timeParts.find(p => p.type === 'hour').value);
             const sourceMinutes = parseInt(timeParts.find(p => p.type === 'minute').value);
             
             // Calculate offset from UTC
-            const offset = (hours * 60 + mins) - (sourceHours * 60 + sourceMinutes);
+            const offset = (hours * 60 + minutes) - (sourceHours * 60 + sourceMinutes);
             const utcDate = new Date(localDate.getTime() + offset * 60 * 1000);
 
             console.log('[handleSliderEvent] Time conversion results:', {
-                timezone,
                 sourceTime: `${sourceHours}:${sourceMinutes}`,
-                targetTime: `${hours}:${mins}`,
+                targetTime: `${hours}:${minutes}`,
                 offset,
                 utcDate: utcDate.toISOString()
             });
 
-            // Update all timezones with the new UTC time
+            // Update all other timezones based on the UTC time
             this.updateOtherTimezones(timezone, utcDate);
+            
+            // Update URL to reflect new time
+            this.debouncedUpdateUrl();
         } catch (error) {
-            console.error('[handleSliderEvent] Error processing slider event:', error);
-            // Revert the slider to its previous position
-            this.updateOtherTimezones(timezone, this.selectedDate);
+            console.error('[handleSliderEvent] Error:', error);
         }
     }
 
@@ -362,7 +630,7 @@ class TimeZoneManager {
                     const timeParts = formatter.formatToParts(sourceDate);
                     const hours = parseInt(timeParts.find(p => p.type === 'hour').value);
                     const minutes = parseInt(timeParts.find(p => p.type === 'minute').value);
-                    const sliderValue = Math.round((hours * 60 + minutes) / 15);
+                    const sliderValue = (hours * 4) + Math.floor(minutes / 15);
 
                     console.log('[updateOtherTimezones] Updating slider:', {
                         timezone: targetTimezone,
@@ -458,7 +726,7 @@ class TimeZoneManager {
                 div.appendChild(locationInfo);
                 
                 div.addEventListener('click', () => {
-                    this.timezones.add(result.timezone);
+                    this.addTimezone(result.timezone);
                     this.searchInput.value = '';
                     this.hideSearchResults();
                     this.render();
@@ -536,6 +804,7 @@ class TimeZoneManager {
             
             this.updateDatePickerDisplay(dateText);
             this.updateAllDisplays();
+            this.onStateChange();
         });
     }
 
@@ -593,6 +862,7 @@ class TimeZoneManager {
             
             // Force a complete re-render to update all time differences
             this.render();
+            this.onStateChange();
         });
         
         element.addEventListener('dragover', (e) => {
@@ -633,6 +903,7 @@ class TimeZoneManager {
             });
             this.timezones = new Set(timezonesArray);
             this.render();
+            this.onStateChange();
         });
     }
 
@@ -761,6 +1032,40 @@ class TimeZoneManager {
         return sourceDate.toLocaleString('en-US', { timeZone: toTimezone });
     }
 
+    convertToUTC(date, timezone) {
+        const tzFormatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: timezone,
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+
+        const timeParts = tzFormatter.formatToParts(date);
+        const hours = parseInt(timeParts.find(p => p.type === 'hour').value);
+        const minutes = parseInt(timeParts.find(p => p.type === 'minute').value);
+        const offset = date.getTimezoneOffset();
+        const utcDate = new Date(date.getTime() + offset * 60 * 1000);
+
+        return utcDate;
+    }
+
+    convertFromUTC(date, timezone) {
+        const tzFormatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: timezone,
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+
+        const timeParts = tzFormatter.formatToParts(date);
+        const hours = parseInt(timeParts.find(p => p.type === 'hour').value);
+        const minutes = parseInt(timeParts.find(p => p.type === 'minute').value);
+        const offset = date.getTimezoneOffset();
+        const localDate = new Date(date.getTime() - offset * 60 * 1000);
+
+        return localDate;
+    }
+
     toggleTimeFormat() {
         this.use24Hour = !this.use24Hour;
         if (this.timeFormatTextEl) {
@@ -769,6 +1074,7 @@ class TimeZoneManager {
         
         // Update time displays
         this.updateAllDisplays();
+        this.onStateChange();
     }
 
     updateAllDisplays() {
@@ -781,12 +1087,11 @@ class TimeZoneManager {
             
             if (timeDisplay && slider) {
                 const value = parseInt(slider.value);
-                const minutes = value * 15;
-                const hours = Math.floor(minutes / 60);
-                const mins = minutes % 60;
+                const hours = Math.floor(value / 4);
+                const minutes = (value % 4) * 15;
                 
                 const date = new Date(this.selectedDate);
-                date.setHours(hours, mins, 0, 0);
+                date.setHours(hours, minutes, 0, 0);
                 
                 const timeFormatter = new Intl.DateTimeFormat('en-US', {
                     timeZone: timezone,
@@ -805,9 +1110,24 @@ class TimeZoneManager {
         }
     }
     
+    addTimezone(timezone) {
+        if (this.timezones.has(timezone)) return;
+        
+        this.timezones.add(timezone);
+        this.render();
+        this.onStateChange();
+    }
+
+    removeTimezone(timezone) {
+        this.timezones.delete(timezone);
+        this.render();
+        this.onStateChange();
+    }
+
     removeAllTimezones() {
         this.timezones.clear();
         this.render();
+        this.onStateChange();
     }
 
     getTimeDifference(timezone, referenceTimezone) {
@@ -1002,20 +1322,6 @@ class TimeZoneManager {
         return coordinates[city];
     }
     
-    render() {
-        if (!this.timezonesContainer) return;
-        
-        this.timezonesContainer.innerHTML = '';
-        Array.from(this.timezones).forEach(timezone => {
-            const entry = this.createTimezoneEntry(timezone);
-            this.timezonesContainer.appendChild(entry);
-            this.initializeDragAndDrop(entry, timezone);
-        });
-        
-        // Restart the time update interval after rendering
-        this.startCurrentTimeUpdate();
-    }
-
     createTimezoneEntry(timezone) {
         const tzData = this.getTimezoneData(timezone);
         if (!tzData) return null;
@@ -1076,11 +1382,6 @@ class TimeZoneManager {
         }
 
         return entry;
-    }
-
-    removeTimezone(timezone) {
-        this.timezones.delete(timezone);
-        this.render();
     }
 }
 
