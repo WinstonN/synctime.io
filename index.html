@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SyncTime - Time Zone Converter</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/3.5.0/css/flag-icon.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.43/moment-timezone-with-data.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header-controls">
+            <div class="add-locations">
+                <h2>Add locations</h2>
+                <div class="search-container">
+                    <input type="text" id="timezoneSearch" class="search-input" placeholder="Search for city or time zone...">
+                    <span class="material-icons search-icon">search</span>
+                    <div id="searchResults" class="search-results">
+                        <!-- Search results will be populated here -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button id="timeFormat" class="text-button">
+                    <span class="material-icons">schedule</span>
+                    <span id="timeFormatText">24h</span>
+                </button>
+                <button id="removeAll" class="text-button danger">
+                    <span class="material-icons">delete</span>
+                    Remove all
+                </button>
+            </div>
+        </header>
+        
+        <main>
+            <div class="timezone-list" id="timezoneList">
+                <!-- Timezone entries will be added here dynamically -->
+            </div>
+        </main>
+    </div>
+    <script src="country-flags.js"></script>
+    <script src="timezone-data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
