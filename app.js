@@ -553,22 +553,30 @@ class TimeZoneManager {
                 this.handleSearch();
             });
         }
-        
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.search-container')) {
-                this.hideSearchResults();
-            }
-        });
-        
+
         if (this.timeFormatEl) {
             this.timeFormatEl.addEventListener('click', () => {
                 this.toggleTimeFormat();
             });
         }
-        
+
         if (this.removeAllButton) {
             this.removeAllButton.addEventListener('click', () => {
                 this.removeAllTimezones();
+            });
+        }
+
+        const copyUrlButton = document.getElementById('copyUrl');
+        if (copyUrlButton) {
+            copyUrlButton.addEventListener('click', () => {
+                this.copyCurrentUrl();
+            });
+        }
+
+        const copyTimezonesButton = document.getElementById('copyTimezones');
+        if (copyTimezonesButton) {
+            copyTimezonesButton.addEventListener('click', () => {
+                this.copyTimezoneInformation();
             });
         }
 
@@ -590,13 +598,25 @@ class TimeZoneManager {
         // Copy URL button
         if (this.copyUrlButton) {
             this.copyUrlButton.addEventListener('click', () => {
-                navigator.clipboard.writeText(window.location.href).then(() => {
-                    // Show success animation
-                    this.copyUrlButton.classList.add('copy-success');
-                    setTimeout(() => {
-                        this.copyUrlButton.classList.remove('copy-success');
-                    }, 300);
-                });
+                this.copyCurrentUrl();
+            });
+        }
+        
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-container')) {
+                this.hideSearchResults();
+            }
+        });
+        
+        if (this.searchResults) {
+            this.searchResults.addEventListener('click', (e) => {
+                if (e.target.classList.contains('location-info')) {
+                    const timezone = e.target.parentNode.getAttribute('data-timezone');
+                    this.addTimezone(timezone);
+                    this.searchInput.value = '';
+                    this.hideSearchResults();
+                    this.render();
+                }
             });
         }
     }
@@ -1440,6 +1460,117 @@ class TimeZoneManager {
         };
         
         return coordinates[city];
+    }
+    
+    copyTimezoneInformation() {
+        const timezones = Array.from(this.timezones);
+        if (timezones.length === 0) {
+            this.showCopyAnimation('No timezones to copy');
+            return;
+        }
+
+        let info = 'Current Time Zones:\n\n';
+        
+        // Get the date and timezone configurations from URL
+        const params = new URLSearchParams(window.location.search);
+        const dateParam = params.get('date');
+        const zonesParam = params.get('zones') || '';
+        const zoneConfigs = zonesParam.split(',');
+        
+        // Parse the reference date
+        const referenceDate = dateParam ? new Date(dateParam) : new Date();
+        
+        timezones.forEach(timezone => {
+            const tzData = this.getTimezoneData(timezone);
+            
+            // Find this timezone's configuration from URL
+            const zoneConfig = zoneConfigs.find(config => config.startsWith(timezone + '@'));
+            let timeValue = '00:00';
+            
+            if (zoneConfig) {
+                // Extract time from zone config (format: timezone@HH:mm)
+                timeValue = zoneConfig.split('@')[1];
+            } else {
+                // Fallback to slider value if URL config not found
+                const slider = document.querySelector(`[data-timezone="${timezone}"] input[type="range"]`);
+                if (slider) {
+                    const value = parseInt(slider.value);
+                    const hours = Math.floor(value / 4).toString().padStart(2, '0');
+                    const minutes = (value % 4) * 15;
+                    timeValue = `${hours}:${minutes.toString().padStart(2, '0')}`;
+                }
+            }
+
+            // Create a date object for this timezone's time
+            const [hours, minutes] = timeValue.split(':').map(Number);
+            const tzDate = new Date(referenceDate);
+            tzDate.setHours(hours, minutes, 0, 0);
+            
+            // Format the date and time
+            const dateStr = tzDate.toLocaleDateString('en-US', {
+                timeZone: timezone,
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric'
+            });
+            
+            const timeStr = this.use24Hour ? 
+                timeValue :
+                tzDate.toLocaleTimeString('en-US', {
+                    timeZone: timezone,
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+
+            const offset = this.getTimezoneOffset(timezone);
+            const offsetStr = `UTC${offset >= 0 ? '+' : ''}${offset}`;
+            
+            info += `${tzData.city}, ${tzData.country}\n`;
+            info += `${timezone} (${offsetStr})\n`;
+            info += `${dateStr} at ${timeStr}\n\n`;
+        });
+
+        // Add the shareable URL at the bottom
+        info += '\nShare this configuration:\n';
+        info += window.location.href;
+
+        navigator.clipboard.writeText(info).then(() => {
+            this.showCopyAnimation('Timezone information copied!');
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            this.showCopyAnimation('Failed to copy');
+        });
+    }
+    
+    showCopyAnimation(message, buttonId = 'copyTimezones') {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            // Add success class
+            button.classList.add('copy-success');
+            
+            // Create tooltip
+            const tooltip = document.createElement('div');
+            tooltip.className = 'copy-tooltip';
+            tooltip.textContent = message;
+            
+            // Position tooltip
+            button.appendChild(tooltip);
+            
+            setTimeout(() => {
+                button.classList.remove('copy-success');
+                tooltip.remove();
+            }, 1000);
+        }
+    }
+    
+    copyCurrentUrl() {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            this.showCopyAnimation('Link copied!', 'copyUrl');
+        }).catch(err => {
+            console.error('Failed to copy URL:', err);
+            this.showCopyAnimation('Failed to copy', 'copyUrl');
+        });
     }
     
     createTimezoneEntry(timezone) {
