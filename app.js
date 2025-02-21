@@ -8,6 +8,7 @@ class TimeZoneManager {
         this.activeSlider = null;
         this.isUpdating = false;
         this.pendingTimes = null; // New property to store pending times
+        this.mapInitialized = false; // Track map initialization state
         
         // Get DOM elements first
         this.container = document.querySelector('.container');
@@ -17,6 +18,7 @@ class TimeZoneManager {
         this.timeFormatEl = document.getElementById('timeFormat');
         this.timeFormatTextEl = document.getElementById('timeFormatText');
         this.removeAllButton = document.getElementById('removeAll');
+        this.copyUrlButton = document.getElementById('copyUrl');
         this.timeGridBody = document.getElementById('timeGridBody');
         
         // Create debounced update function
@@ -315,23 +317,25 @@ class TimeZoneManager {
             button.addEventListener('click', () => {
                 const tabId = button.getAttribute('data-tab');
                 
+                // Update active tab
                 tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+                
                 button.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
                 
-                tabContents.forEach(content => {
-                    if (content.id === tabId) {
-                        content.classList.add('active');
-                        if (tabId === 'meeting-planner') {
-                            this.updateTimeGrid();
-                        }
-                    } else {
-                        content.classList.remove('active');
-                    }
-                });
+                // Store active tab
+                this.activeTab = tabId;
                 
-                if (this.initialized) {
-                    this.onStateChange();
+                // Update specific tab content
+                if (tabId === 'meeting-planner') {
+                    this.updateTimeGrid();
+                } else if (tabId === 'world-map' && !this.mapInitialized) {
+                    this.initializeWorldMap();
                 }
+                
+                // Update URL
+                this.debouncedUpdateUrl();
             });
         });
 
@@ -342,6 +346,109 @@ class TimeZoneManager {
                 tab.click();
             }
         }
+    }
+
+    initializeWorldMap() {
+        console.log('Initializing world map...');
+        
+        // Initialize the map
+        this.map = L.map('world-map').setView([20, 0], 2);
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: 'OpenStreetMap contributors'
+        }).addTo(this.map);
+
+        // Create custom light blue marker icon
+        this.markerIcon = L.divIcon({
+            className: 'custom-marker',
+            html: '<svg width="24" height="36" viewBox="0 0 24 36" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.383 0 0 5.383 0 12c0 9 12 24 12 24s12-15 12-24c0-6.617-5.383-12-12-12zm0 18c-3.314 0-6-2.686-6-6s2.686-6 6-6 6 2.686 6 6-2.686 6-6 6z" fill="#1565C0"/></svg>',
+            iconSize: [24, 36],
+            iconAnchor: [12, 36],
+            popupAnchor: [0, -36]
+        });
+        
+        // Add markers for existing timezones
+        this.updateMapMarkers();
+        
+        // Listen for timezone changes
+        this.onStateChange = () => {
+            if (this.initialized) {
+                this.debouncedUpdateUrl();
+                this.updateMapMarkers();
+            }
+        };
+        
+        this.mapInitialized = true;
+    }
+    
+    updateMapMarkers() {
+        console.log('Updating map markers...');
+        
+        // Clear existing markers
+        if (this.markers) {
+            this.markers.forEach(marker => marker.remove());
+        }
+        this.markers = [];
+        
+        // Add markers for each timezone
+        this.timezones.forEach(timezone => {
+            const city = timezone.split('/').pop().replace(/_/g, ' ');
+            const coordinates = this.getTimezoneCoordinates(timezone);
+            
+            if (coordinates) {
+                const marker = L.marker([coordinates.lat, coordinates.lng], {
+                    icon: this.markerIcon
+                }).bindPopup(`
+                    <div class="map-popup">
+                        <h3>${city}</h3>
+                        <div class="time" data-timezone="${timezone}"></div>
+                    </div>
+                `).addTo(this.map);
+                
+                this.markers.push(marker);
+                
+                // Update popup time when opened
+                marker.on('popupopen', () => {
+                    const timeEl = marker.getPopup().getContent().querySelector('.time');
+                    if (timeEl) {
+                        const formatter = new Intl.DateTimeFormat('en-US', {
+                            timeZone: timezone,
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: !this.use24Hour,
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric'
+                        });
+                        timeEl.textContent = formatter.format(this.selectedDate);
+                    }
+                });
+            }
+        });
+    }
+    
+    getTimezoneCoordinates(timezone) {
+        // Approximate coordinates for major cities
+        const coordinates = {
+            'Pacific/Auckland': { lat: -36.8485, lng: 174.7633 },
+            'Australia/Sydney': { lat: -33.8688, lng: 151.2093 },
+            'Asia/Tokyo': { lat: 35.6762, lng: 139.6503 },
+            'Asia/Shanghai': { lat: 31.2304, lng: 121.4737 },
+            'Asia/Dubai': { lat: 25.2048, lng: 55.2708 },
+            'Europe/London': { lat: 51.5074, lng: -0.1278 },
+            'Europe/Paris': { lat: 48.8566, lng: 2.3522 },
+            'Europe/Berlin': { lat: 52.5200, lng: 13.4050 },
+            'Africa/Cairo': { lat: 30.0444, lng: 31.2357 },
+            'America/New_York': { lat: 40.7128, lng: -74.0060 },
+            'America/Chicago': { lat: 41.8781, lng: -87.6298 },
+            'America/Denver': { lat: 39.7392, lng: -104.9903 },
+            'America/Los_Angeles': { lat: 34.0522, lng: -118.2437 },
+            'Pacific/Honolulu': { lat: 21.3069, lng: -157.8583 }
+        };
+        
+        return coordinates[timezone];
     }
 
     updateTimeGrid() {
@@ -477,6 +584,19 @@ class TimeZoneManager {
                 if (e.target.classList.contains('timeline-slider')) {
                     this.handleSliderEvent(e.target, e.target.closest('.timezone-entry').getAttribute('data-timezone'));
                 }
+            });
+        }
+        
+        // Copy URL button
+        if (this.copyUrlButton) {
+            this.copyUrlButton.addEventListener('click', () => {
+                navigator.clipboard.writeText(window.location.href).then(() => {
+                    // Show success animation
+                    this.copyUrlButton.classList.add('copy-success');
+                    setTimeout(() => {
+                        this.copyUrlButton.classList.remove('copy-success');
+                    }, 300);
+                });
             });
         }
     }

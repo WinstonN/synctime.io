@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SyncTime - Time Zone Converter</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/3.5.0/css/flag-icon.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.43/moment-timezone-with-data.min.js"></script>
 </head>
@@ -37,15 +38,29 @@
             </div>
         </header>
 
-        <div class="tabs">
-            <button class="tab-button active" data-tab="time-converter">
-                <span class="material-icons">schedule</span>
-                Time Converter
-            </button>
-            <button class="tab-button" data-tab="meeting-planner">
-                <span class="material-icons">event</span>
-                Meeting Planner
-            </button>
+        <div class="top-panel">
+            <div class="tab-buttons">
+                <button class="tab-button active" data-tab="time-converter">
+                    <span class="material-icons">schedule</span>
+                    Time Converter
+                </button>
+                <button class="tab-button" data-tab="meeting-planner">
+                    <span class="material-icons">event</span>
+                    Meeting Planner
+                </button>
+                <button class="tab-button" data-tab="world-map">
+                    <span class="material-icons">public</span>
+                    World Map
+                </button>
+            </div>
+            <div class="controls">
+                <button id="copyUrl" class="control-button" title="Copy link to clipboard">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                    </svg>
+                </button>
+            </div>
         </div>
 
         <div class="tab-content active" id="time-converter">
@@ -89,9 +104,16 @@
                 </div>
             </div>
         </div>
+
+        <div class="tab-content" id="world-map">
+            <div id="map-container">
+                <div id="world-map"></div>
+            </div>
+        </div>
     </div>
     <script src="country-flags.js"></script>
     <script src="timezone-data.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="app.js"></script>
 </body>
 </html>
