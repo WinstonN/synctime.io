@@ -203,56 +203,16 @@ class TimeZoneManager {
     }
 
     setupStateChangeHandlers() {
-        // Debounce URL updates to avoid too many history entries
-        let updateTimeout;
-        const updateUrl = () => {
-            if (!this.initialized) return;
-            
-            clearTimeout(updateTimeout);
-            updateTimeout = setTimeout(() => {
-                const params = new URLSearchParams();
-                
-                // Add timezones with their current times
-                if (this.timezones.size > 0) {
-                    const timezones = Array.from(this.timezones).map(timezone => {
-                        let time = timezone;
-                        const entry = document.querySelector(`[data-timezone="${timezone}"]`);
-                        if (entry) {
-                            const slider = entry.querySelector('input[type="range"]');
-                            if (slider) {
-                                const sliderValue = parseInt(slider.value);
-                                const hours = Math.floor(sliderValue / 4);
-                                const minutes = (sliderValue % 4) * 15;
-                                time = `${timezone}@${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                            }
-                        }
-                        return time;
-                    });
-                    params.set('zones', timezones.join(','));
-                }
-                
-                // Add date if not today
-                if (this.selectedDate) {
-                    params.set('date', this.selectedDate.toISOString().split('T')[0]);
-                }
-                
-                // Add time format
-                params.set('format', this.use24Hour ? '24h' : '12h');
-                
-                // Add active tab
-                params.set('tab', this.activeTab);
-                
-                // Update URL without reloading
-                const search = params.toString();
-                const newUrl = `${window.location.pathname}${search ? '?' + search : ''}`;
-                window.history.replaceState(null, '', newUrl);
-            }, 500);
-        };
-
-        // Add state change listener
+        // Initialize the onStateChange handler
         this.onStateChange = () => {
             if (this.initialized) {
+                // Update URL
                 this.debouncedUpdateUrl();
+                
+                // Update map markers if map is initialized
+                if (this.mapInitialized) {
+                    this.updateMapMarkers();
+                }
             }
         };
     }
@@ -379,14 +339,6 @@ class TimeZoneManager {
         
         // Add markers for existing timezones
         this.updateMapMarkers();
-        
-        // Listen for timezone changes
-        this.onStateChange = () => {
-            if (this.initialized) {
-                this.debouncedUpdateUrl();
-                this.updateMapMarkers();
-            }
-        };
         
         this.mapInitialized = true;
     }
@@ -644,6 +596,7 @@ class TimeZoneManager {
             });
         }
 
+        // Copy URL button
         const copyUrlButton = document.getElementById('copyUrl');
         if (copyUrlButton) {
             copyUrlButton.addEventListener('click', () => {
@@ -651,6 +604,14 @@ class TimeZoneManager {
             });
         }
 
+        // Copy timezones button
+        const copyTimezonesButton = document.getElementById('copyTimezones');
+        if (copyTimezonesButton) {
+            copyTimezonesButton.addEventListener('click', () => {
+                this.copyTimezoneInformation();
+            });
+        }
+        
         // Add global slider event handlers
         if (this.timezonesContainer) {
             this.timezonesContainer.addEventListener('input', (e) => {
@@ -663,13 +624,6 @@ class TimeZoneManager {
                 if (e.target.classList.contains('timeline-slider')) {
                     this.handleSliderEvent(e.target, e.target.closest('.timezone-entry').getAttribute('data-timezone'));
                 }
-            });
-        }
-        
-        // Copy URL button
-        if (this.copyUrlButton) {
-            this.copyUrlButton.addEventListener('click', () => {
-                this.copyCurrentUrl();
             });
         }
         
@@ -1165,9 +1119,12 @@ class TimeZoneManager {
             month: 'short',
             day: 'numeric'
         });
+
+        const formattedTime = timeFormatter.format(date);
+        const formattedDate = dateFormatter.format(date);
         
-        dateDisplay.textContent = dateFormatter.format(date);
-        timeDisplay.textContent = timeFormatter.format(date);
+        dateDisplay.textContent = formattedDate;
+        timeDisplay.textContent = formattedTime;
     }
     
     updateAllTimezones() {
@@ -1398,11 +1355,16 @@ class TimeZoneManager {
     }
     
     addTimezone(timezone) {
-        if (this.timezones.has(timezone)) return;
-        
-        this.timezones.add(timezone);
-        this.render();
-        this.onStateChange();
+        if (this.isValidTimezone(timezone) && !this.timezones.has(timezone)) {
+            this.timezones.add(timezone);
+            this.render();
+            this.onStateChange();
+            
+            // Update map markers if we're in the map view
+            if (this.activeTab === 'world-map') {
+                this.updateMapMarkers();
+            }
+        }
     }
 
     removeTimezone(timezone) {
