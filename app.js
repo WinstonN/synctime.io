@@ -235,33 +235,32 @@ class TimeZoneManager {
         
         // Add timezones with their current times
         if (this.timezones.size > 0) {
-            // Get timezone entries in their current order
-            const orderedTimezones = Array.from(this.timezonesContainer.querySelectorAll('.timezone-entry'))
-                .map(entry => {
-                    const timezone = entry.getAttribute('data-timezone');
-                    const slider = entry.querySelector('.timeline-slider');
-                    if (timezone && slider) {
+            const timezones = Array.from(this.timezones).map(timezone => {
+                const entry = document.querySelector(`[data-timezone="${timezone}"]`);
+                if (entry) {
+                    const slider = entry.querySelector('input[type="range"]');
+                    if (slider) {
                         const sliderValue = parseInt(slider.value);
                         const hours = Math.floor(sliderValue / 4);
                         const minutes = (sliderValue % 4) * 15;
                         return `${timezone}@${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
                     }
-                    return timezone;
-                })
-                .filter(Boolean); // Remove any undefined entries
-            
-            params.set('zones', orderedTimezones.join(','));
+                }
+                return timezone;
+            });
+            params.set('zones', timezones.join(','));
         }
         
-        // Add date if not today
+        // Add date without timezone conversion
         if (this.selectedDate) {
-            params.set('date', this.selectedDate.toISOString().split('T')[0]);
+            const dateStr = `${this.selectedDate.getFullYear()}-${String(this.selectedDate.getMonth() + 1).padStart(2, '0')}-${String(this.selectedDate.getDate()).padStart(2, '0')}`;
+            params.set('date', dateStr);
         }
         
         // Add time format
         params.set('format', this.use24Hour ? '24h' : '12h');
         
-        // Add active tab, always ensuring a default value
+        // Add active tab
         params.set('tab', this.activeTab || 'time-converter');
         
         // Update URL without reloading
@@ -979,12 +978,16 @@ class TimeZoneManager {
         nativeDateInput.addEventListener('change', (e) => {
             // Get the selected date in the local timezone
             const selectedDate = new Date(e.target.value);
-            // Set time to noon to avoid any timezone crossing issues
+            // Set time to noon to avoid timezone crossing issues
             selectedDate.setHours(12, 0, 0, 0);
             this.selectedDate = selectedDate;
             
+            // Update both displays
             this.updateDatePickerDisplay(dateText);
-            this.updateAllDisplays();
+            this.updateDateDisplay();
+            
+            // Use existing method to update all timezones
+            this.updateAllTimezones();
             this.onStateChange();
         });
     }
