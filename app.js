@@ -235,21 +235,22 @@ class TimeZoneManager {
         
         // Add timezones with their current times
         if (this.timezones.size > 0) {
-            const timezones = Array.from(this.timezones).map(timezone => {
-                let time = timezone;
-                const entry = document.querySelector(`[data-timezone="${timezone}"]`);
-                if (entry) {
-                    const slider = entry.querySelector('input[type="range"]');
-                    if (slider) {
+            // Get timezone entries in their current order
+            const orderedTimezones = Array.from(this.timezonesContainer.querySelectorAll('.timezone-entry'))
+                .map(entry => {
+                    const timezone = entry.getAttribute('data-timezone');
+                    const slider = entry.querySelector('.timeline-slider');
+                    if (timezone && slider) {
                         const sliderValue = parseInt(slider.value);
                         const hours = Math.floor(sliderValue / 4);
                         const minutes = (sliderValue % 4) * 15;
-                        time = `${timezone}@${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                        return `${timezone}@${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
                     }
-                }
-                return time;
-            });
-            params.set('zones', timezones.join(','));
+                    return timezone;
+                })
+                .filter(Boolean); // Remove any undefined entries
+            
+            params.set('zones', orderedTimezones.join(','));
         }
         
         // Add date if not today
@@ -1044,16 +1045,22 @@ class TimeZoneManager {
                 const slider = this.draggedElement.querySelector('.timeline-slider');
                 if (slider) {
                     slider.value = this.draggedSliderValue;
-                    // Trigger the input event to update times
-                    slider.dispatchEvent(new Event('input'));
                 }
             }
             
             this.draggedElement = null;
             this.draggedSliderValue = undefined;
             
-            // Update state without re-rendering
-            this.onStateChange(false);
+            // Update the timezones Set to match the new order
+            const newTimezones = new Set();
+            this.timezonesContainer.querySelectorAll('.timezone-entry').forEach(entry => {
+                const tz = entry.getAttribute('data-timezone');
+                if (tz) newTimezones.add(tz);
+            });
+            this.timezones = newTimezones;
+            
+            // Update state and URL
+            this.onStateChange();
         });
         
         element.addEventListener('dragover', (e) => {
