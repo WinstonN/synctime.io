@@ -1322,6 +1322,9 @@ class TimeZoneManager {
         
         // Also update current times display
         this.updateCurrentTimes();
+
+        // Update URL state to reflect new format
+        this.onStateChange();
     }
     
     addTimezone(timezone) {
