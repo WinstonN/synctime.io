@@ -430,27 +430,17 @@ class TimeZoneManager {
     }
     
     getTimezoneCoordinates(timezone) {
-        // Approximate coordinates for major cities
-        const coordinates = {
-            'Pacific/Auckland': { lat: -36.8485, lng: 174.7633 },
-            'Australia/Sydney': { lat: -33.8688, lng: 151.2093 },
-            'Asia/Tokyo': { lat: 35.6762, lng: 139.6503 },
-            'Asia/Shanghai': { lat: 31.2304, lng: 121.4737 },
-            'Asia/Dubai': { lat: 25.2048, lng: 55.2708 },
-            'Europe/London': { lat: 51.5074, lng: -0.1278 },
-            'Europe/Paris': { lat: 48.8566, lng: 2.3522 },
-            'Europe/Berlin': { lat: 52.5200, lng: 13.4050 },
-            'Africa/Cairo': { lat: 30.0444, lng: 31.2357 },
-            'America/New_York': { lat: 40.7128, lng: -74.0060 },
-            'America/Chicago': { lat: 41.8781, lng: -87.6298 },
-            'America/Denver': { lat: 39.7392, lng: -104.9903 },
-            'America/Los_Angeles': { lat: 34.0522, lng: -118.2437 },
-            'Pacific/Honolulu': { lat: 21.3069, lng: -157.8583 }
-        };
-        
-        return coordinates[timezone];
+        // Find the timezone entry in timezoneData
+        const entry = timezoneData.find(entry => entry.timezone === timezone);
+        if (entry && entry.coordinates) {
+            return {
+                lat: entry.coordinates.latitude,
+                lng: entry.coordinates.longitude
+            };
+        }
+        return null;
     }
-
+    
     updateTimeGrid() {
         if (!this.timeGridBody) return;
         
