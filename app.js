@@ -9,6 +9,7 @@ class TimeZoneManager {
         this.isUpdating = false;
         this.pendingTimes = null; // New property to store pending times
         this.mapInitialized = false; // Track map initialization state
+        this.activeTab = 'time-converter'; // Set default tab
         
         // Get DOM elements first
         this.container = document.querySelector('.container');
@@ -300,8 +301,8 @@ class TimeZoneManager {
         // Add time format
         params.set('format', this.use24Hour ? '24h' : '12h');
         
-        // Add active tab
-        params.set('tab', this.activeTab);
+        // Add active tab, always ensuring a default value
+        params.set('tab', this.activeTab || 'time-converter');
         
         // Update URL without reloading
         const search = params.toString();
@@ -312,38 +313,30 @@ class TimeZoneManager {
     initializeTabs() {
         const tabButtons = document.querySelectorAll('.tab-button');
         const tabContents = document.querySelectorAll('.tab-content');
-
+        
         tabButtons.forEach(button => {
             button.addEventListener('click', () => {
-                const tabId = button.getAttribute('data-tab');
-                
-                // Update active tab
+                // Remove active class from all buttons and contents
                 tabButtons.forEach(btn => btn.classList.remove('active'));
                 tabContents.forEach(content => content.classList.remove('active'));
                 
+                // Add active class to clicked button and corresponding content
                 button.classList.add('active');
+                const tabId = button.getAttribute('data-tab');
                 document.getElementById(tabId).classList.add('active');
                 
-                // Store active tab
+                // Update active tab and URL state
                 this.activeTab = tabId;
-                
-                // Update specific tab content
-                if (tabId === 'meeting-planner') {
-                    this.updateTimeGrid();
-                } else if (tabId === 'world-map' && !this.mapInitialized) {
-                    this.initializeWorldMap();
-                }
-                
-                // Update URL
-                this.debouncedUpdateUrl();
+                this.onStateChange();
             });
         });
-
-        // Set initial active tab from URL
-        if (this.activeTab) {
-            const tab = document.querySelector(`[data-tab="${this.activeTab}"]`);
-            if (tab) {
-                tab.click();
+        
+        // Set initial active tab if none is active
+        if (!this.activeTab) {
+            this.activeTab = 'time-converter';
+            const defaultTab = document.querySelector('[data-tab="time-converter"]');
+            if (defaultTab) {
+                defaultTab.click();
             }
         }
     }
