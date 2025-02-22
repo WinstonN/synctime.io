@@ -775,8 +775,8 @@ class TimeZoneManager {
                 const formattedTime = timeFormatter.format(sourceDate);
                 const formattedDate = dateFormatter.format(sourceDate);
                 
-                timeDisplay.textContent = formattedTime;
                 dateDisplay.textContent = formattedDate;
+                timeDisplay.textContent = formattedTime;
 
                 console.log('[updateOtherTimezones] Updated timezone:', {
                     timezone: targetTimezone,
@@ -1078,8 +1078,8 @@ class TimeZoneManager {
             day: 'numeric'
         });
         
-        timeDisplay.textContent = timeFormatter.format(date);
         dateDisplay.textContent = dateFormatter.format(date);
+        timeDisplay.textContent = timeFormatter.format(date);
     }
     
     updateAllTimezones() {
@@ -1117,20 +1117,22 @@ class TimeZoneManager {
             
             if (currentTimeEl && currentDateEl && timezone && this.isValidTimezone(timezone)) {
                 try {
-                    currentTimeEl.textContent = now.toLocaleTimeString('en-US', {
+                    const timeFormatter = new Intl.DateTimeFormat('en-US', {
+                        timeZone: timezone,
                         hour: 'numeric',
                         minute: '2-digit',
                         second: '2-digit',
-                        hour12: !this.use24Hour,
-                        timeZone: timezone
+                        hour12: !this.use24Hour
                     });
-                    
-                    currentDateEl.textContent = now.toLocaleDateString('en-US', {
+                    const dateFormatter = new Intl.DateTimeFormat('en-US', {
+                        timeZone: timezone,
                         weekday: 'short',
                         month: 'short',
-                        day: 'numeric',
-                        timeZone: timezone
+                        day: 'numeric'
                     });
+                    
+                    currentDateEl.textContent = dateFormatter.format(now);
+                    currentTimeEl.textContent = timeFormatter.format(now);
                 } catch (error) {
                     console.error('Error updating time for timezone:', timezone, error);
                 }
@@ -1641,22 +1643,69 @@ class TimeZoneManager {
         entry.className = 'timezone-entry';
         entry.setAttribute('data-timezone', timezone);
         
+        // Add CSS for horizontal alignment
+        const style = document.createElement('style');
+        style.textContent = `
+            .timezone-time {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+            }
+            .timezone-time-row {
+                display: flex;
+                align-items: baseline;
+                gap: 8px;
+            }
+            .timezone-date {
+                color: #666;
+                font-size: 0.9em;
+            }
+            .current-time-container {
+                display: flex;
+                align-items: baseline;
+                gap: 8px;
+                font-size: 0.85em;
+                color: #666;
+                margin-top: 4px;
+            }
+            .current-time-label {
+                color: #999;
+                margin-right: 4px;
+                font-size: 0.82em;
+            }
+            .current-time-container .current-date {
+                font-size: 0.95em;
+            }
+            .timezone-date {
+                color: #666;
+                font-size: 1em;
+            }
+            .timezone-hour {
+                font-size: 1.3em;
+                font-weight: 500;
+            }
+        `;
+        document.head.appendChild(style);
+        
         entry.innerHTML = `
             <div class="drag-handle">⋮⋮</div>
             <div class="timezone-info">
                 <div class="timezone-left">
                     ${flagCode === 'un' ? '<span>🕐</span>' : `<span class="flag-icon flag-icon-${flagCode.toLowerCase()}"></span>`}
                     <div>
-                        <div class="timezone-name">${tzData.city}, ${tzData.country || 'Universal Time'}</div>
+                        <div class="timezone-name">${tzData.city}, ${tzData.country}</div>
                         <div class="timezone-details">${timezone} (UTC${tzData.utcOffset})</div>
                     </div>
                 </div>
                 <div class="timezone-time">
-                    <div class="timezone-hour">12:00</div>
-                    <div class="timezone-date"></div>
+                    <div class="timezone-time-row">
+                        <div class="timezone-date"></div>
+                        <div class="timezone-hour">12:00</div>
+                    </div>
                     <div class="current-time-container">
-                        <div class="current-time"></div>
+                        <span class="current-time-label">Current Time:</span>
                         <div class="current-date"></div>
+                        <div class="current-time"></div>
                     </div>
                 </div>
             </div>
