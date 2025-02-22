@@ -316,30 +316,46 @@ class TimeZoneManager {
         const tabButtons = document.querySelectorAll('.tab-button');
         const tabContents = document.querySelectorAll('.tab-content');
         
+        const activateTab = (tabId) => {
+            // Remove active class from all buttons and contents
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Add active class to clicked button and corresponding content
+            const button = document.querySelector(`[data-tab="${tabId}"]`);
+            if (button) {
+                button.classList.add('active');
+                const content = document.getElementById(tabId);
+                if (content) {
+                    content.classList.add('active');
+                }
+            }
+            
+            // Initialize specific tab content if needed
+            if (tabId === 'world-map' && !this.mapInitialized) {
+                this.initializeWorldMap();
+            } else if (tabId === 'meeting-planner') {
+                this.updateTimeGrid();
+            }
+            
+            // Update active tab and URL state
+            this.activeTab = tabId;
+            this.onStateChange();
+        };
+        
         tabButtons.forEach(button => {
             button.addEventListener('click', () => {
-                // Remove active class from all buttons and contents
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                tabContents.forEach(content => content.classList.remove('active'));
-                
-                // Add active class to clicked button and corresponding content
-                button.classList.add('active');
                 const tabId = button.getAttribute('data-tab');
-                document.getElementById(tabId).classList.add('active');
-                
-                // Update active tab and URL state
-                this.activeTab = tabId;
-                this.onStateChange();
+                activateTab(tabId);
             });
         });
         
-        // Set initial active tab if none is active
-        if (!this.activeTab) {
+        // Set initial active tab
+        if (this.activeTab) {
+            activateTab(this.activeTab);
+        } else {
             this.activeTab = 'time-converter';
-            const defaultTab = document.querySelector('[data-tab="time-converter"]');
-            if (defaultTab) {
-                defaultTab.click();
-            }
+            activateTab('time-converter');
         }
     }
 
