@@ -170,12 +170,9 @@ class TimeZoneManager {
 
     isValidTimezone(timezone) {
         try {
-            console.log('Validating timezone:', timezone);
             Intl.DateTimeFormat(undefined, { timeZone: timezone });
-            console.log('Timezone is valid:', timezone);
             return true;
         } catch (e) {
-            console.log('Invalid timezone:', timezone);
             return false;
         }
     }
@@ -396,6 +393,12 @@ class TimeZoneManager {
     
     updateMapMarkers() {
         console.log('Updating map markers...');
+        
+        // Only update markers if map is initialized
+        if (!this.mapInitialized || !this.map || !this.markerIcon) {
+            console.log('Map not initialized yet, skipping marker update');
+            return;
+        }
         
         // Clear existing markers
         if (this.markers) {
@@ -1134,21 +1137,25 @@ class TimeZoneManager {
             const currentTimeEl = entry.querySelector('.current-time');
             const currentDateEl = entry.querySelector('.current-date');
             
-            if (currentTimeEl && currentDateEl) {
-                currentTimeEl.textContent = now.toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: !this.use24Hour,
-                    timeZone: timezone
-                });
-                
-                currentDateEl.textContent = now.toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    timeZone: timezone
-                });
+            if (currentTimeEl && currentDateEl && timezone && this.isValidTimezone(timezone)) {
+                try {
+                    currentTimeEl.textContent = now.toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: !this.use24Hour,
+                        timeZone: timezone
+                    });
+                    
+                    currentDateEl.textContent = now.toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        timeZone: timezone
+                    });
+                } catch (error) {
+                    console.error('Error updating time for timezone:', timezone, error);
+                }
             }
         });
     }
