@@ -910,14 +910,9 @@ class TimeZoneManager {
         dateText.className = 'date-text';
         this.updateDatePickerDisplay(dateText);
         
-        const calendarIcon = document.createElement('span');
-        calendarIcon.className = 'material-icons';
-        calendarIcon.textContent = 'calendar_today';
-        
         const wrapper = document.createElement('div');
         wrapper.className = 'date-wrapper';
         wrapper.appendChild(dateText);
-        wrapper.appendChild(calendarIcon);
         datePickerButton.appendChild(wrapper);
 
         // Create and configure the native date input
@@ -928,7 +923,7 @@ class TimeZoneManager {
 
         // Handle button click
         datePickerButton.addEventListener('click', (e) => {
-            if (e.target === calendarIcon || e.target === datePickerButton || e.target === wrapper) {
+            if (e.target === datePickerButton || e.target === wrapper) {
                 e.preventDefault();
                 nativeDateInput.showPicker();
             }
