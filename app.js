@@ -761,7 +761,7 @@ class TimeZoneManager {
                 // Then update displays using the slider value
                 const timeFormatter = new Intl.DateTimeFormat('en-US', {
                     timeZone: targetTimezone,
-                    hour: '2-digit',
+                    hour: 'numeric',
                     minute: '2-digit',
                     hour12: !this.use24Hour
                 });
@@ -1062,46 +1062,24 @@ class TimeZoneManager {
     updateTimezoneDisplay(entry, timezone, sliderValue, date) {
         const timeDisplay = entry.querySelector('.timezone-hour');
         const dateDisplay = entry.querySelector('.timezone-date');
-        const slider = entry.querySelector('.timeline-slider');
-
-        if (!timeDisplay || !dateDisplay || !slider) {
-            console.warn('Missing required elements for timezone:', timezone);
-            return;
-        }
-
-        // Only update if the value has changed significantly
-        if (Math.abs(parseFloat(slider.value) - sliderValue) < 0.1) {
-            return;
-        }
-
-        // Update time display
+        
+        if (!timeDisplay || !dateDisplay) return;
+        
         const timeFormatter = new Intl.DateTimeFormat('en-US', {
             timeZone: timezone,
-            hour: '2-digit',
+            hour: 'numeric',
             minute: '2-digit',
             hour12: !this.use24Hour
         });
-        const timeString = timeFormatter.format(date);
-        timeDisplay.textContent = timeString;
-
-        // Update date display
         const dateFormatter = new Intl.DateTimeFormat('en-US', {
             timeZone: timezone,
             weekday: 'short',
             month: 'short',
             day: 'numeric'
         });
+        
+        timeDisplay.textContent = timeFormatter.format(date);
         dateDisplay.textContent = dateFormatter.format(date);
-
-        // Update slider value without triggering events
-        slider.value = Math.round(sliderValue);
-
-        console.log('[updateTimezoneDisplay]', {
-            timezone,
-            sliderValue,
-            time: timeString,
-            date: dateDisplay.textContent
-        });
     }
     
     updateAllTimezones() {
@@ -1302,7 +1280,7 @@ class TimeZoneManager {
                 // Update the display
                 const timeFormatter = new Intl.DateTimeFormat('en-US', {
                     timeZone: timezone,
-                    hour: '2-digit',
+                    hour: 'numeric',
                     minute: '2-digit',
                     hour12: !this.use24Hour
                 });
@@ -1397,6 +1375,7 @@ class TimeZoneManager {
     
     formatTimeForTimezone(timezone) {
         try {
+            // If no reference time set, use current time
             if (!this.selectedDate) {
                 // If no reference time set, use current time
                 const now = new Date();
@@ -1439,7 +1418,7 @@ class TimeZoneManager {
             console.error('Error formatting time for timezone:', timezone, e);
             return {
                 dateStr: 'Invalid timezone',
-                timeStr: '--:--'
+                timeStr: 'Invalid timezone'
             };
         }
     }
