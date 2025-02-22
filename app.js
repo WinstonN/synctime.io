@@ -732,7 +732,30 @@ class TimeZoneManager {
                     return;
                 }
 
-                // Format the time and date for display
+                // First get the time in 24h format for slider position
+                const formatter24h = new Intl.DateTimeFormat('en-US', {
+                    timeZone: targetTimezone,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                });
+
+                const timeParts = formatter24h.formatToParts(sourceDate);
+                const hours = parseInt(timeParts.find(p => p.type === 'hour').value);
+                const minutes = parseInt(timeParts.find(p => p.type === 'minute').value);
+                const sliderValue = (hours * 4) + Math.floor(minutes / 15);
+
+                // Update slider first
+                slider.value = sliderValue;
+
+                console.log('[updateOtherTimezones] Time components:', {
+                    timezone: targetTimezone,
+                    hours24h: hours,
+                    minutes,
+                    sliderValue
+                });
+
+                // Then update displays using the slider value
                 const timeFormatter = new Intl.DateTimeFormat('en-US', {
                     timeZone: targetTimezone,
                     hour: '2-digit',
@@ -746,43 +769,19 @@ class TimeZoneManager {
                     day: 'numeric'
                 });
 
-                // Always update the displays for all timezones
                 const formattedTime = timeFormatter.format(sourceDate);
                 const formattedDate = dateFormatter.format(sourceDate);
                 
                 timeDisplay.textContent = formattedTime;
                 dateDisplay.textContent = formattedDate;
 
-                console.log('[updateOtherTimezones] Updated displays:', {
+                console.log('[updateOtherTimezones] Updated timezone:', {
                     timezone: targetTimezone,
-                    time: formattedTime,
-                    date: formattedDate
+                    sliderValue,
+                    sliderTime: `${hours}:${minutes}`,
+                    displayTime: formattedTime,
+                    displayDate: formattedDate
                 });
-
-                // Update slider position for non-source timezones
-                if (targetTimezone !== sourceTimezone) {
-                    const formatter = new Intl.DateTimeFormat('en-US', {
-                        timeZone: targetTimezone,
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false
-                    });
-
-                    const timeParts = formatter.formatToParts(sourceDate);
-                    const hours = parseInt(timeParts.find(p => p.type === 'hour').value);
-                    const minutes = parseInt(timeParts.find(p => p.type === 'minute').value);
-                    const sliderValue = (hours * 4) + Math.floor(minutes / 15);
-
-                    console.log('[updateOtherTimezones] Updating slider:', {
-                        timezone: targetTimezone,
-                        hours,
-                        minutes,
-                        sliderValue,
-                        previousValue: slider.value
-                    });
-
-                    slider.value = sliderValue;
-                }
             });
         } catch (error) {
             console.error('[updateOtherTimezones] Error updating timezones:', error);
@@ -1222,18 +1221,16 @@ class TimeZoneManager {
     }
 
     toggleTimeFormat() {
+        console.log('[toggleTimeFormat] Starting format switch:', {
+            from: this.use24Hour ? '24h' : '12h',
+            to: this.use24Hour ? '12h' : '24h'
+        });
+
         this.use24Hour = !this.use24Hour;
         if (this.timeFormatTextEl) {
             this.timeFormatTextEl.textContent = this.use24Hour ? '24h' : '12h';
         }
         
-        // Update time displays
-        this.updateAllDisplays();
-        this.onStateChange();
-    }
-
-    updateAllDisplays() {
-        // Update timezone displays
         const entries = document.querySelectorAll('.timezone-entry');
         entries.forEach(entry => {
             const timezone = entry.getAttribute('data-timezone');
@@ -1241,28 +1238,90 @@ class TimeZoneManager {
             const slider = entry.querySelector('.timeline-slider');
             
             if (timeDisplay && slider) {
+                // Log initial state
+                console.log('[toggleTimeFormat] Before conversion:', {
+                    timezone,
+                    sliderValue: slider.value,
+                    sliderTime: `${Math.floor(parseInt(slider.value) / 4)}:${(parseInt(slider.value) % 4) * 15}`,
+                    currentDisplay: timeDisplay.textContent
+                });
+
                 const value = parseInt(slider.value);
                 const hours = Math.floor(value / 4);
                 const minutes = (value % 4) * 15;
+
+                // Get date components in the timezone
+                const formatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone: timezone,
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                });
+
+                const dateParts = formatter.formatToParts(this.selectedDate);
+                const year = parseInt(dateParts.find(p => p.type === 'year').value);
+                const month = parseInt(dateParts.find(p => p.type === 'month').value) - 1;
+                const day = parseInt(dateParts.find(p => p.type === 'day').value);
+
+                // Create a UTC date using the timezone's local date components
+                const localDate = new Date(Date.UTC(year, month, day, hours, minutes));
+
+                // Convert to UTC by applying the timezone offset
+                const tzFormatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone: timezone,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                });
+
+                const timeParts = tzFormatter.formatToParts(localDate);
+                const sourceHours = parseInt(timeParts.find(p => p.type === 'hour').value);
+                const sourceMinutes = parseInt(timeParts.find(p => p.type === 'minute').value);
                 
-                const date = new Date(this.selectedDate);
-                date.setHours(hours, minutes, 0, 0);
-                
+                // Calculate offset from UTC
+                const offset = (hours * 60 + minutes) - (sourceHours * 60 + sourceMinutes);
+                const utcDate = new Date(localDate.getTime() + offset * 60 * 1000);
+
+                // Format the time in both formats for logging
+                const time24h = new Intl.DateTimeFormat('en-US', {
+                    timeZone: timezone,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                }).format(utcDate);
+
+                const time12h = new Intl.DateTimeFormat('en-US', {
+                    timeZone: timezone,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                }).format(utcDate);
+
+                // Update the display
                 const timeFormatter = new Intl.DateTimeFormat('en-US', {
                     timeZone: timezone,
                     hour: '2-digit',
                     minute: '2-digit',
                     hour12: !this.use24Hour
                 });
-                
-                timeDisplay.textContent = timeFormatter.format(date);
+
+                const newTimeString = timeFormatter.format(utcDate);
+                timeDisplay.textContent = newTimeString;
+
+                console.log('[toggleTimeFormat] After conversion:', {
+                    timezone,
+                    sliderValue: slider.value,
+                    sliderTime: `${hours}:${minutes}`,
+                    time24h,
+                    time12h,
+                    newDisplay: newTimeString,
+                    using24h: this.use24Hour
+                });
             }
         });
-
-        // Update meeting planner grid if visible
-        if (document.querySelector('#meeting-planner').classList.contains('active')) {
-            this.updateTimeGrid();
-        }
+        
+        // Also update current times display
+        this.updateCurrentTimes();
     }
     
     addTimezone(timezone) {
