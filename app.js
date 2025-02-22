@@ -10,6 +10,8 @@ class TimeZoneManager {
         this.pendingTimes = null; // New property to store pending times
         this.mapInitialized = false; // Track map initialization state
         this.activeTab = 'time-converter'; // Set default tab
+        this.draggedElement = null;
+        this.draggedSliderValue = undefined; // Store slider value during drag
         
         // Get DOM elements first
         this.container = document.querySelector('.container');
@@ -960,7 +962,7 @@ class TimeZoneManager {
             element.setAttribute('draggable', true);
         });
         
-        element.addEventListener('mouseup', () => {
+        dragHandle.addEventListener('mouseup', () => {
             // Remove draggable after drag is done
             element.setAttribute('draggable', false);
         });
@@ -968,24 +970,35 @@ class TimeZoneManager {
         element.addEventListener('dragstart', (e) => {
             this.draggedElement = element;
             element.classList.add('dragging');
+            
+            // Store the current slider value
+            const slider = element.querySelector('.timeline-slider');
+            if (slider) {
+                this.draggedSliderValue = slider.value;
+            }
+            
             e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', timezone);
         });
         
         element.addEventListener('dragend', () => {
             element.classList.remove('dragging');
             element.setAttribute('draggable', false);
+            
+            // Restore the slider value after drag
+            if (this.draggedElement && this.draggedSliderValue !== undefined) {
+                const slider = this.draggedElement.querySelector('.timeline-slider');
+                if (slider) {
+                    slider.value = this.draggedSliderValue;
+                    // Trigger the input event to update times
+                    slider.dispatchEvent(new Event('input'));
+                }
+            }
+            
             this.draggedElement = null;
+            this.draggedSliderValue = undefined;
             
-            // Save the new order and re-render the entire list
-            const timezonesArray = Array.from(this.timezonesContainer.children).map(el => {
-                return el.getAttribute('data-timezone');
-            });
-            this.timezones = new Set(timezonesArray);
-            
-            // Force a complete re-render to update all time differences
-            this.render();
-            this.onStateChange();
+            // Update state without re-rendering
+            this.onStateChange(false);
         });
         
         element.addEventListener('dragover', (e) => {
@@ -993,11 +1006,12 @@ class TimeZoneManager {
             if (this.draggedElement === element) return;
             
             const rect = element.getBoundingClientRect();
-            const midpoint = rect.top + rect.height / 2;
-            const isAfter = e.clientY > midpoint;
+            const midpoint = (rect.top + rect.bottom) / 2;
+            const referenceElement = e.clientY < midpoint ? element : element.nextSibling;
             
             // Remove drag-over class from all elements
-            Array.from(this.timezonesContainer.children).forEach(el => {
+            const elements = this.timezonesContainer.querySelectorAll('.timezone-entry');
+            elements.forEach(el => {
                 el.classList.remove('drag-over');
             });
             
@@ -1005,7 +1019,7 @@ class TimeZoneManager {
             element.classList.add('drag-over');
             
             if (this.draggedElement && this.draggedElement !== element) {
-                const referenceElement = isAfter ? element.nextSibling : element;
+                // Only move if we're not trying to drop at the same spot
                 if (referenceElement !== this.draggedElement && referenceElement !== this.draggedElement.nextSibling) {
                     this.timezonesContainer.insertBefore(this.draggedElement, referenceElement);
                 }
@@ -1019,15 +1033,17 @@ class TimeZoneManager {
         element.addEventListener('drop', (e) => {
             e.preventDefault();
             element.classList.remove('drag-over');
-            
-            // Force a re-render after drop to update time differences
-            const timezonesArray = Array.from(this.timezonesContainer.children).map(el => {
-                return el.getAttribute('data-timezone');
-            });
-            this.timezones = new Set(timezonesArray);
-            this.render();
-            this.onStateChange();
         });
+    }
+
+    onStateChange(shouldRender = true) {
+        // Update URL state
+        this.debouncedUpdateUrl();
+        
+        // Only render if explicitly requested
+        if (shouldRender) {
+            this.render();
+        }
     }
 
     updateTimezoneDisplay(entry, timezone, sliderValue, date) {
@@ -1614,7 +1630,10 @@ class TimeZoneManager {
                 this.removeTimezone(timezone);
             });
         }
-
+        
+        // Initialize drag and drop
+        this.initializeDragAndDrop(entry, timezone);
+        
         return entry;
     }
 }
