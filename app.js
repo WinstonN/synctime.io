@@ -492,8 +492,8 @@ class TimeZoneManager {
             // Add UTC time cell with date
             const utcCell = document.createElement('td');
             utcCell.className = 'utc-time';
-            const dateStr = utcDate.toLocaleDateString('en-US', { 
-                weekday: 'long',
+            const dateStr = utcDate.toLocaleDateString('en-US', {
+                weekday: 'short',
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
@@ -556,6 +556,80 @@ class TimeZoneManager {
             this.searchInput.addEventListener('input', () => {
                 this.handleSearch();
             });
+
+            // Add keyboard navigation for search results
+            this.searchInput.addEventListener('keydown', (e) => {
+                if (!this.searchResults || !this.searchResults.classList.contains('active')) return;
+                
+                const results = Array.from(this.searchResults.children).filter(div => !div.classList.contains('no-results'));
+                if (results.length === 0) return;
+
+                const currentIndex = results.findIndex(div => div.classList.contains('selected'));
+                let newIndex = currentIndex;
+                
+                switch (e.key) {
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        if (currentIndex === -1) {
+                            newIndex = 0;
+                        } else {
+                            newIndex = (currentIndex + 1) % results.length;
+                        }
+                        break;
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        if (currentIndex === -1) {
+                            newIndex = results.length - 1;
+                        } else {
+                            newIndex = currentIndex === 0 ? results.length - 1 : currentIndex - 1;
+                        }
+                        break;
+                    case 'Enter':
+                        e.preventDefault();
+                        const selectedDiv = this.searchResults.querySelector('.selected');
+                        if (selectedDiv) {
+                            const timezone = selectedDiv.getAttribute('data-timezone');
+                            if (timezone) {
+                                this.addTimezone(timezone);
+                                this.hideSearchResults();
+                                this.searchInput.value = '';
+                            }
+                        }
+                        return;
+                    case 'Escape':
+                        this.hideSearchResults();
+                        return;
+                    default:
+                        return;
+                }
+
+                // Update selection
+                results.forEach(div => div.classList.remove('selected'));
+                results[newIndex].classList.add('selected');
+                
+                // Ensure the selected item is visible
+                results[newIndex].scrollIntoView({ block: 'nearest' });
+            });
+
+            // Handle mouse interactions
+            this.searchResults?.addEventListener('mouseover', (e) => {
+                const resultDiv = e.target.closest('.search-results > div');
+                if (resultDiv && !resultDiv.classList.contains('no-results')) {
+                    // Remove selected class from all divs
+                    this.searchResults.querySelectorAll('div').forEach(div => {
+                        div.classList.remove('selected');
+                    });
+                    // Add selected class to hovered div
+                    resultDiv.classList.add('selected');
+                }
+            });
+
+            this.searchResults?.addEventListener('mouseleave', () => {
+                // When mouse leaves the search results, remove all selections
+                this.searchResults.querySelectorAll('div').forEach(div => {
+                    div.classList.remove('selected');
+                });
+            });
         }
 
         if (this.timeFormatEl) {
@@ -574,13 +648,6 @@ class TimeZoneManager {
         if (copyUrlButton) {
             copyUrlButton.addEventListener('click', () => {
                 this.copyCurrentUrl();
-            });
-        }
-
-        const copyTimezonesButton = document.getElementById('copyTimezones');
-        if (copyTimezonesButton) {
-            copyTimezonesButton.addEventListener('click', () => {
-                this.copyTimezoneInformation();
             });
         }
 
@@ -832,22 +899,24 @@ class TimeZoneManager {
         if (!this.searchResults) return;
         
         this.searchResults.innerHTML = '';
+        this.searchResults.classList.add('active');
         
         if (results.length === 0) {
             const div = document.createElement('div');
+            div.classList.add('no-results');
             div.textContent = 'No results found';
             this.searchResults.appendChild(div);
         } else {
             results.forEach(result => {
                 const div = document.createElement('div');
+                div.setAttribute('data-timezone', result.timezone);
+                div.classList.add('search-result');
                 
                 const flag = document.createElement('span');
-                // Handle cases where country doesn't have a flag or is a timezone standard
                 const countryCode = countryFlags[result.country];
                 if (countryCode) {
                     flag.className = `flag-icon flag-icon-${countryCode.toLowerCase()}`;
                 } else {
-                    // For timezone standards and countries without flags, use a clock emoji
                     flag.textContent = '🕐';
                 }
                 
@@ -870,23 +939,42 @@ class TimeZoneManager {
                 
                 div.addEventListener('click', () => {
                     this.addTimezone(result.timezone);
-                    this.searchInput.value = '';
                     this.hideSearchResults();
-                    this.render();
+                    this.searchInput.value = '';
                 });
                 
                 this.searchResults.appendChild(div);
             });
+
+            // Select the first result by default
+            this.searchResults.querySelector('.search-result')?.classList.add('selected');
         }
         
-        this.searchResults.classList.add('active');
+        // Add CSS for search results
+        const style = document.createElement('style');
+        style.textContent = `
+            .search-results > div.selected {
+                background-color: #eef2ff;
+            }
+            .search-results > div:hover {
+                background-color: #f3f4f6;
+            }
+            .search-results > div {
+                padding: 0.75rem;
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                cursor: pointer;
+                transition: background-color 0.15s ease;
+            }
+        `;
+        document.head.appendChild(style);
     }
 
     hideSearchResults() {
-        if (this.searchResults) {
-            this.searchResults.classList.remove('active');
-            this.searchResults.innerHTML = '';
-        }
+        if (!this.searchResults) return;
+        this.searchResults.classList.remove('active');
+        this.searchResults.innerHTML = '';
     }
     
     initializeDatePicker() {
@@ -1683,6 +1771,20 @@ class TimeZoneManager {
             .timezone-hour {
                 font-size: 1.3em;
                 font-weight: 500;
+            }
+            .search-results > div.selected {
+                background-color: #eef2ff;
+            }
+            .search-results > div:hover {
+                background-color: #f3f4f6;
+            }
+            .search-results > div {
+                padding: 0.75rem;
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                cursor: pointer;
+                transition: background-color 0.15s ease;
             }
         `;
         document.head.appendChild(style);
