@@ -186,8 +186,17 @@ class TimeZoneManager {
         this.timezonesContainer.innerHTML = '';
         
         // Create new entries for each timezone
-        Array.from(this.timezones).forEach(timezone => {
+        Array.from(this.timezones).forEach((timezone, index) => {
             const entry = this.createTimezoneEntry(timezone);
+            
+            // Add primary location label to the first entry
+            if (index === 0) {
+                const primaryLabel = document.createElement('div');
+                primaryLabel.className = 'primary-location-label';
+                primaryLabel.textContent = 'PRIMARY LOCATION';
+                entry.appendChild(primaryLabel);
+            }
+            
             this.timezonesContainer.appendChild(entry);
         });
         
@@ -1058,25 +1067,23 @@ class TimeZoneManager {
     initializeDragAndDrop(element, timezone) {
         const dragHandle = element.querySelector('.drag-handle');
         
-        dragHandle.addEventListener('mousedown', (e) => {
-            // Only start drag if clicking on the handle
+        dragHandle.addEventListener('mousedown', () => {
             element.setAttribute('draggable', true);
         });
         
         dragHandle.addEventListener('mouseup', () => {
-            // Remove draggable after drag is done
             element.setAttribute('draggable', false);
         });
         
         element.addEventListener('dragstart', (e) => {
             this.draggedElement = element;
+            this.draggedTimezone = timezone;
             element.classList.add('dragging');
             
-            // Store the current slider value and timezone
+            // Store the current slider value
             const slider = element.querySelector('.timeline-slider');
             if (slider) {
                 this.draggedSliderValue = slider.value;
-                this.draggedTimezone = timezone;
             }
             
             e.dataTransfer.effectAllowed = 'move';
@@ -1099,14 +1106,6 @@ class TimeZoneManager {
             this.draggedSliderValue = undefined;
             this.draggedTimezone = null;
             
-            // Update the timezones Set to match the new order
-            const newTimezones = new Set();
-            this.timezonesContainer.querySelectorAll('.timezone-entry').forEach(entry => {
-                const tz = entry.getAttribute('data-timezone');
-                if (tz) newTimezones.add(tz);
-            });
-            this.timezones = newTimezones;
-            
             // Update state and URL
             this.onStateChange();
         });
@@ -1119,14 +1118,11 @@ class TimeZoneManager {
             const midpoint = (rect.top + rect.bottom) / 2;
             const referenceElement = e.clientY < midpoint ? element : element.nextSibling;
             
-            const elements = this.timezonesContainer.querySelectorAll('.timezone-entry');
-            elements.forEach(el => el.classList.remove('drag-over'));
-            
-            element.classList.add('drag-over');
-            
             if (this.draggedElement && this.draggedElement !== element) {
                 if (referenceElement !== this.draggedElement && referenceElement !== this.draggedElement.nextSibling) {
                     this.timezonesContainer.insertBefore(this.draggedElement, referenceElement);
+                    // Update primary location label after reordering
+                    this.updatePrimaryLocationLabel();
                 }
             }
         });
@@ -1139,6 +1135,27 @@ class TimeZoneManager {
             e.preventDefault();
             element.classList.remove('drag-over');
         });
+    }
+
+    updatePrimaryLocationLabel() {
+        // Remove any existing primary location labels
+        const existingLabels = document.querySelectorAll('.primary-location-label');
+        existingLabels.forEach(label => label.remove());
+
+        // Add label to the first timezone entry
+        const firstEntry = this.timezonesContainer.firstElementChild;
+        if (firstEntry) {
+            const primaryLabel = document.createElement('div');
+            primaryLabel.className = 'primary-location-label';
+            primaryLabel.textContent = 'PRIMARY LOCATION';
+            firstEntry.appendChild(primaryLabel);
+        }
+
+        // Update the timezones Set to match the new order
+        const newOrder = Array.from(this.timezonesContainer.children).map(entry => 
+            entry.getAttribute('data-timezone')
+        );
+        this.timezones = new Set(newOrder);
     }
 
     onStateChange(shouldRender = true) {

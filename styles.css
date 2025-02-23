@@ -354,6 +354,7 @@ body {
 .timezone-left {
     display: flex;
     gap: 0.75rem;
+    margin-top: 15px;
 }
 
 .timezone-name {
@@ -370,6 +371,7 @@ body {
 .timezone-time {
     text-align: right;
     min-width: 120px;
+    margin-top: 15px;
 }
 
 .timezone-hour {
@@ -1116,4 +1118,18 @@ main {
 /* Robust sticky headers with hardware acceleration */
 .time-grid {
     isolation: isolate;
+}
+
+.primary-location-label {
+    position: absolute;
+    left: 2.5rem;
+    top: 0;
+    background: white;
+    color: #3498db;
+    padding: 2px 8px;
+    border: 1px solid #3498db;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
 }
