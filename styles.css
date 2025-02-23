@@ -662,6 +662,20 @@ body {
     padding-left: 0.5rem;
 }
 
+.date-picker {
+    padding: 8px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-right: 16px;
+}
+
+.primary-date {
+    font-size: 16px;
+    color: #333;
+    margin-left: 8px;
+}
+
 .more-button {
     position: absolute;
     right: 1rem;

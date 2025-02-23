@@ -946,29 +946,38 @@ class TimeZoneManager {
         datePickerButton.className = 'date-picker-button';
         controls.insertBefore(datePickerButton, controls.firstChild);
 
-        // Initialize with current date
-        const today = new Date();
-        this.selectedDate = today;
+        // Get date from URL or use current date
+        const params = new URLSearchParams(window.location.search);
+        const dateParam = params.get('date');
         
-        // Create the date display and calendar icon
+        if (dateParam) {
+            this.selectedDate = new Date(dateParam);
+        } else {
+            this.selectedDate = new Date();
+        }
+        
+        // Create the native date input
+        const nativeDateInput = document.createElement('input');
+        nativeDateInput.type = 'date';
+        nativeDateInput.style.cssText = 'position: absolute; opacity: 0; pointer-events: none;';
+        datePickerButton.appendChild(nativeDateInput);
+        
+        // Set initial value
+        nativeDateInput.value = this.selectedDate.toISOString().split('T')[0];
+        
+        // Create the date display
         const dateText = document.createElement('span');
         dateText.className = 'date-text';
-        this.updateDatePickerDisplay(dateText);
+        this.updateDateDisplay(dateText);
         
         const wrapper = document.createElement('div');
         wrapper.className = 'date-wrapper';
         wrapper.appendChild(dateText);
         datePickerButton.appendChild(wrapper);
 
-        // Create and configure the native date input
-        const nativeDateInput = document.createElement('input');
-        nativeDateInput.type = 'date';
-        nativeDateInput.style.cssText = 'position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px;';
-        datePickerButton.appendChild(nativeDateInput);
-
-        // Handle button click
+        // Handle button click to show native picker
         datePickerButton.addEventListener('click', (e) => {
-            if (e.target === datePickerButton || e.target === wrapper) {
+            if (e.target === datePickerButton || e.target === wrapper || e.target === dateText) {
                 e.preventDefault();
                 nativeDateInput.showPicker();
             }
@@ -976,50 +985,40 @@ class TimeZoneManager {
 
         // Handle date selection
         nativeDateInput.addEventListener('change', (e) => {
-            console.log('[initializeDatePicker] Date selected:', e.target.value);
-            const selectedDate = new Date(e.target.value);
-            console.log('[initializeDatePicker] Parsed Date:', selectedDate);
+            const newDate = new Date(e.target.value);
+            newDate.setHours(12, 0, 0, 0); // Set to noon to avoid timezone issues
+            this.selectedDate = newDate;
             
-            selectedDate.setHours(12, 0, 0, 0);
-            this.selectedDate = selectedDate;
-            console.log('[initializeDatePicker] Stored Date:', this.selectedDate);
-            
-            // Update both displays
-            this.updateDatePickerDisplay(dateText);
-            this.updateDateDisplay();
-            
+            this.updateDateDisplay(dateText);
             this.updateAllTimezones();
-            this.onStateChange();
+            this.debouncedUpdateUrl();
         });
     }
 
-    updateDatePickerDisplay(dateText) {
-        dateText.textContent = this.selectedDate.toLocaleDateString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-        });
-    }
-
-    updateDateDisplay() {
-        const primaryDate = document.querySelector('.primary-date');
-        if (primaryDate) {
-            console.log('[updateDateDisplay] Selected Date:', this.selectedDate);
-            console.log('[updateDateDisplay] Local Date:', this.selectedDate.toLocaleString());
-            console.log('[updateDateDisplay] UTC Date:', this.selectedDate.toISOString());
-            
+    updateDateDisplay(dateText) {
+        if (dateText) {
             const formattedDate = this.selectedDate.toLocaleDateString('en-US', {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
             });
-            
-            console.log('[updateDateDisplay] Formatted Date:', formattedDate);
-            primaryDate.textContent = formattedDate;
+            dateText.textContent = formattedDate;
+            console.log('[updateDateDisplay] Updated date display:', formattedDate);
         } else {
-            console.error('[updateDateDisplay] Primary date element not found');
+            const dateText = document.querySelector('.date-text');
+            if (dateText) {
+                const formattedDate = this.selectedDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                dateText.textContent = formattedDate;
+                console.log('[updateDateDisplay] Updated date display:', formattedDate);
+            } else {
+                console.error('[updateDateDisplay] Date text element not found');
+            }
         }
     }
     
