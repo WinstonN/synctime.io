@@ -12,6 +12,7 @@ class TimeZoneManager {
         this.activeTab = 'time-converter'; // Set default tab
         this.draggedElement = null;
         this.draggedSliderValue = undefined; // Store slider value during drag
+        this.draggedTimezone = null; // Store timezone during drag
         
         // Get DOM elements first
         this.container = document.querySelector('.container');
@@ -662,51 +663,83 @@ class TimeZoneManager {
         const hours = Math.floor(value / 4);
         const minutes = (value % 4) * 15;
 
-        console.log('[handleSliderEvent] Processing slider event:', {
-            timezone,
-            value,
-            totalMinutes: hours * 60 + minutes,
-            hours,
-            mins: minutes
-        });
-
         try {
-            // Create a date in the source timezone first
-            const formatter = new Intl.DateTimeFormat('en-US', {
-                timeZone: timezone,
-                year: 'numeric',
-                month: 'numeric',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: 'numeric',
-                second: 'numeric',
-                hour12: false
-            });
+            let localDate;
+            
+            if (timezone === 'UTC') {
+                // For UTC, create the date directly in UTC
+                const utcDate = new Date(this.selectedDate);
+                utcDate.setUTCHours(hours, minutes, 0, 0);
+                localDate = utcDate;
+            } else {
+                // Get the timezone's UTC offset
+                const formatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone: timezone,
+                    timeZoneName: 'longOffset'
+                });
+                const tzOffset = formatter.format(this.selectedDate).match(/GMT([+-])(\d{2}):(\d{2})/);
+                
+                if (tzOffset) {
+                    // Convert slider time to UTC
+                    const sign = tzOffset[1] === '-' ? 1 : -1; // Invert sign for conversion to UTC
+                    const tzHours = parseInt(tzOffset[2]);
+                    const tzMinutes = parseInt(tzOffset[3]);
+                    
+                    // Create date in UTC
+                    const utcDate = new Date(this.selectedDate);
+                    const utcHours = (hours + (sign * tzHours) + 24) % 24;
+                    const utcMinutes = (minutes + (sign * tzMinutes) + 60) % 60;
+                    
+                    if (utcMinutes < minutes && sign === 1) {
+                        utcDate.setUTCHours(utcHours + 1, utcMinutes, 0, 0);
+                    } else if (utcMinutes > minutes && sign === -1) {
+                        utcDate.setUTCHours(utcHours - 1, utcMinutes, 0, 0);
+                    } else {
+                        utcDate.setUTCHours(utcHours, utcMinutes, 0, 0);
+                    }
+                    
+                    localDate = utcDate;
+                    
+                    console.log('[handleSliderEvent] Converted to UTC:', {
+                        timezone,
+                        originalHours: hours,
+                        originalMinutes: minutes,
+                        utcHours,
+                        utcMinutes,
+                        tzOffset: `${tzOffset[1]}${tzHours}:${tzMinutes}`,
+                        result: utcDate.toISOString()
+                    });
+                } else {
+                    // Fallback to old method if offset parsing fails
+                    const formatter = new Intl.DateTimeFormat('en-US', {
+                        timeZone: timezone,
+                        year: 'numeric',
+                        month: 'numeric',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: 'numeric',
+                        second: 'numeric',
+                        hour12: false
+                    });
 
-            // Get the current date components in the source timezone
-            const parts = formatter.formatToParts(this.selectedDate);
-            const dateObj = {
-                year: parseInt(parts.find(p => p.type === 'year').value),
-                month: parseInt(parts.find(p => p.type === 'month').value) - 1,
-                day: parseInt(parts.find(p => p.type === 'day').value),
-                hour: hours,
-                minute: minutes
-            };
+                    const parts = formatter.formatToParts(this.selectedDate);
+                    const dateObj = {
+                        year: parseInt(parts.find(p => p.type === 'year').value),
+                        month: parseInt(parts.find(p => p.type === 'month').value) - 1,
+                        day: parseInt(parts.find(p => p.type === 'day').value),
+                        hour: hours,
+                        minute: minutes
+                    };
 
-            // Create a date using the components from the source timezone
-            const localDate = new Date(
-                dateObj.year,
-                dateObj.month,
-                dateObj.day,
-                dateObj.hour,
-                dateObj.minute
-            );
-
-            console.log('[handleSliderEvent] Created local date:', {
-                timezone,
-                localDate: localDate.toISOString(),
-                components: dateObj
-            });
+                    localDate = new Date(
+                        dateObj.year,
+                        dateObj.month,
+                        dateObj.day,
+                        dateObj.hour,
+                        dateObj.minute
+                    );
+                }
+            }
 
             // Update all other timezones based on this time
             this.updateOtherTimezones(timezone, localDate);
@@ -756,14 +789,11 @@ class TimeZoneManager {
             const hours24h = parseInt(parts.find(p => p.type === 'hour').value);
             const minutes = parseInt(parts.find(p => p.type === 'minute').value);
 
-            // Calculate slider value (96 intervals, 15 minutes each)
-            const sliderValue = (hours24h * 4) + Math.floor(minutes / 15);
-
             console.log('[updateOtherTimezones] Time components:', {
                 timezone,
                 hours24h,
                 minutes,
-                sliderValue
+                sliderValue: (hours24h * 4) + Math.floor(minutes / 15)
             });
 
             const displayTime = timeFormatter.format(sourceDate);
@@ -771,7 +801,7 @@ class TimeZoneManager {
 
             console.log('[updateOtherTimezones] Updated timezone:', {
                 timezone,
-                sliderValue,
+                sliderValue: (hours24h * 4) + Math.floor(minutes / 15),
                 displayTime,
                 displayDate
             });
@@ -781,7 +811,7 @@ class TimeZoneManager {
             if (slider) {
                 // Only update the slider if it's not the source timezone or if it's a programmatic update
                 if (timezone !== sourceTimezone || !this.activeSlider) {
-                    slider.value = sliderValue;
+                    slider.value = (hours24h * 4) + Math.floor(minutes / 15);
                 }
             }
 
@@ -1034,10 +1064,11 @@ class TimeZoneManager {
             this.draggedElement = element;
             element.classList.add('dragging');
             
-            // Store the current slider value
+            // Store the current slider value and timezone
             const slider = element.querySelector('.timeline-slider');
             if (slider) {
                 this.draggedSliderValue = slider.value;
+                this.draggedTimezone = timezone;
             }
             
             e.dataTransfer.effectAllowed = 'move';
@@ -1047,16 +1078,18 @@ class TimeZoneManager {
             element.classList.remove('dragging');
             element.setAttribute('draggable', false);
             
-            // Restore the slider value after drag
-            if (this.draggedElement && this.draggedSliderValue !== undefined) {
+            // Restore the slider value and update all timezones
+            if (this.draggedElement && this.draggedSliderValue !== undefined && this.draggedTimezone) {
                 const slider = this.draggedElement.querySelector('.timeline-slider');
                 if (slider) {
                     slider.value = this.draggedSliderValue;
+                    this.handleSliderEvent(slider, this.draggedTimezone);
                 }
             }
             
             this.draggedElement = null;
             this.draggedSliderValue = undefined;
+            this.draggedTimezone = null;
             
             // Update the timezones Set to match the new order
             const newTimezones = new Set();
@@ -1078,17 +1111,12 @@ class TimeZoneManager {
             const midpoint = (rect.top + rect.bottom) / 2;
             const referenceElement = e.clientY < midpoint ? element : element.nextSibling;
             
-            // Remove drag-over class from all elements
             const elements = this.timezonesContainer.querySelectorAll('.timezone-entry');
-            elements.forEach(el => {
-                el.classList.remove('drag-over');
-            });
+            elements.forEach(el => el.classList.remove('drag-over'));
             
-            // Add drag-over class to the current element
             element.classList.add('drag-over');
             
             if (this.draggedElement && this.draggedElement !== element) {
-                // Only move if we're not trying to drop at the same spot
                 if (referenceElement !== this.draggedElement && referenceElement !== this.draggedElement.nextSibling) {
                     this.timezonesContainer.insertBefore(this.draggedElement, referenceElement);
                 }
