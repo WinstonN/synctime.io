@@ -671,53 +671,45 @@ class TimeZoneManager {
         });
 
         try {
-            // Get the current date components in the source timezone
+            // Create a date in the source timezone first
             const formatter = new Intl.DateTimeFormat('en-US', {
                 timeZone: timezone,
                 year: 'numeric',
-                month: '2-digit',
-                day: '2-digit'
+                month: 'numeric',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: 'numeric',
+                second: 'numeric',
+                hour12: false
             });
 
-            const dateParts = formatter.formatToParts(this.selectedDate);
-            const year = parseInt(dateParts.find(p => p.type === 'year').value);
-            const month = parseInt(dateParts.find(p => p.type === 'month').value) - 1;
-            const day = parseInt(dateParts.find(p => p.type === 'day').value);
+            // Get the current date components in the source timezone
+            const parts = formatter.formatToParts(this.selectedDate);
+            const dateObj = {
+                year: parseInt(parts.find(p => p.type === 'year').value),
+                month: parseInt(parts.find(p => p.type === 'month').value) - 1,
+                day: parseInt(parts.find(p => p.type === 'day').value),
+                hour: hours,
+                minute: minutes
+            };
 
-            // Create a date object representing the local time in the source timezone
-            const localDate = new Date(Date.UTC(year, month, day, hours, minutes));
+            // Create a date using the components from the source timezone
+            const localDate = new Date(
+                dateObj.year,
+                dateObj.month,
+                dateObj.day,
+                dateObj.hour,
+                dateObj.minute
+            );
 
             console.log('[handleSliderEvent] Created local date:', {
                 timezone,
                 localDate: localDate.toISOString(),
-                components: { year, month, day, hours, minutes }
+                components: dateObj
             });
 
-            // Convert to UTC by applying the timezone offset
-            const tzFormatter = new Intl.DateTimeFormat('en-US', {
-                timeZone: timezone,
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false
-            });
-
-            const timeParts = tzFormatter.formatToParts(localDate);
-            const sourceHours = parseInt(timeParts.find(p => p.type === 'hour').value);
-            const sourceMinutes = parseInt(timeParts.find(p => p.type === 'minute').value);
-            
-            // Calculate offset from UTC
-            const offset = (hours * 60 + minutes) - (sourceHours * 60 + sourceMinutes);
-            const utcDate = new Date(localDate.getTime() + offset * 60 * 1000);
-
-            console.log('[handleSliderEvent] Time conversion results:', {
-                sourceTime: `${sourceHours}:${sourceMinutes}`,
-                targetTime: `${hours}:${minutes}`,
-                offset,
-                utcDate: utcDate.toISOString()
-            });
-
-            // Update all other timezones based on the UTC time
-            this.updateOtherTimezones(timezone, utcDate);
+            // Update all other timezones based on this time
+            this.updateOtherTimezones(timezone, localDate);
             
             // Update URL to reflect new time
             this.debouncedUpdateUrl();
@@ -732,87 +724,74 @@ class TimeZoneManager {
             sourceDate: sourceDate.toISOString()
         });
 
-        if (this.isUpdating) {
-            console.log('[updateOtherTimezones] Update already in progress, skipping');
-            return;
-        }
+        const entries = document.querySelectorAll('.timezone-entry');
+        entries.forEach(entry => {
+            const timezone = entry.getAttribute('data-timezone');
+            if (!timezone) return;
 
-        this.isUpdating = true;
-        try {
-            const entries = document.querySelectorAll('.timezone-entry');
-            entries.forEach(entry => {
-                const targetTimezone = entry.getAttribute('data-timezone');
-                if (!targetTimezone) {
-                    console.error('[updateOtherTimezones] Missing timezone attribute');
-                    return;
-                }
-
-                const timeDisplay = entry.querySelector('.timezone-hour');
-                const dateDisplay = entry.querySelector('.timezone-date');
-                const slider = entry.querySelector('.timeline-slider');
-
-                if (!timeDisplay || !dateDisplay || !slider) {
-                    console.error('[updateOtherTimezones] Missing UI elements for', targetTimezone);
-                    return;
-                }
-
-                // First get the time in 24h format for slider position
-                const formatter24h = new Intl.DateTimeFormat('en-US', {
-                    timeZone: targetTimezone,
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false
-                });
-
-                const timeParts = formatter24h.formatToParts(sourceDate);
-                const hours = parseInt(timeParts.find(p => p.type === 'hour').value);
-                const minutes = parseInt(timeParts.find(p => p.type === 'minute').value);
-                const sliderValue = (hours * 4) + Math.floor(minutes / 15);
-
-                // Update slider first
-                slider.value = sliderValue;
-
-                console.log('[updateOtherTimezones] Time components:', {
-                    timezone: targetTimezone,
-                    hours24h: hours,
-                    minutes,
-                    sliderValue
-                });
-
-                // Then update displays using the slider value
-                const timeFormatter = new Intl.DateTimeFormat('en-US', {
-                    timeZone: targetTimezone,
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: !this.use24Hour
-                });
-                const dateFormatter = new Intl.DateTimeFormat('en-US', {
-                    timeZone: targetTimezone,
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric'
-                });
-
-                const formattedTime = timeFormatter.format(sourceDate);
-                const formattedDate = dateFormatter.format(sourceDate);
-                
-                dateDisplay.textContent = formattedDate;
-                timeDisplay.textContent = formattedTime;
-
-                console.log('[updateOtherTimezones] Updated timezone:', {
-                    timezone: targetTimezone,
-                    sliderValue,
-                    sliderTime: `${hours}:${minutes}`,
-                    displayTime: formattedTime,
-                    displayDate: formattedDate
-                });
+            // Create formatters for the target timezone
+            const timeFormatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: timezone,
+                hour: this.use24Hour ? '2-digit' : 'numeric',
+                minute: '2-digit',
+                hour12: !this.use24Hour
             });
-        } catch (error) {
-            console.error('[updateOtherTimezones] Error updating timezones:', error);
-        } finally {
-            console.log('[updateOtherTimezones] Finished update');
-            this.isUpdating = false;
-        }
+
+            const dateFormatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: timezone,
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric'
+            });
+
+            // Get hours and minutes in 24h format for slider calculation
+            const hourFormatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: timezone,
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+
+            const parts = hourFormatter.formatToParts(sourceDate);
+            const hours24h = parseInt(parts.find(p => p.type === 'hour').value);
+            const minutes = parseInt(parts.find(p => p.type === 'minute').value);
+
+            // Calculate slider value (96 intervals, 15 minutes each)
+            const sliderValue = (hours24h * 4) + Math.floor(minutes / 15);
+
+            console.log('[updateOtherTimezones] Time components:', {
+                timezone,
+                hours24h,
+                minutes,
+                sliderValue
+            });
+
+            const displayTime = timeFormatter.format(sourceDate);
+            const displayDate = dateFormatter.format(sourceDate);
+
+            console.log('[updateOtherTimezones] Updated timezone:', {
+                timezone,
+                sliderValue,
+                displayTime,
+                displayDate
+            });
+
+            // Update UI elements
+            const slider = entry.querySelector('.timeline-slider');
+            if (slider) {
+                // Only update the slider if it's not the source timezone or if it's a programmatic update
+                if (timezone !== sourceTimezone || !this.activeSlider) {
+                    slider.value = sliderValue;
+                }
+            }
+
+            const timeDisplay = entry.querySelector('.timezone-hour');
+            const dateDisplay = entry.querySelector('.timezone-date');
+            if (timeDisplay) timeDisplay.textContent = displayTime;
+            if (dateDisplay) dateDisplay.textContent = displayDate;
+        });
+
+        console.log('[updateOtherTimezones] Finished update');
     }
     
     initializeTimeSlider(element, timezone) {
@@ -989,8 +968,24 @@ class TimeZoneManager {
             newDate.setHours(12, 0, 0, 0); // Set to noon to avoid timezone issues
             this.selectedDate = newDate;
             
+            // Update the date display first
             this.updateDateDisplay(dateText);
-            this.updateAllTimezones();
+
+            // Get the first timezone entry to use as a reference
+            const firstEntry = document.querySelector('.timezone-entry');
+            if (firstEntry) {
+                const timezone = firstEntry.getAttribute('data-timezone');
+                const slider = firstEntry.querySelector('.timeline-slider');
+                if (slider && timezone) {
+                    // Use the current slider value to maintain the selected time
+                    this.handleSliderEvent(slider, timezone);
+                }
+            } else {
+                // If no timezone entries exist, just update all timezones
+                this.updateAllTimezones();
+            }
+
+            // Update the URL
             this.debouncedUpdateUrl();
         });
     }
