@@ -752,32 +752,27 @@ main {
 }
 
 .time-grid {
-    width: 100%;
-    overflow-x: auto;
+    position: relative;
+    overflow: visible;
+}
+
+.time-table-container {
+    overflow: auto;
+    max-height: calc(120vh - 150px);
 }
 
 .time-table {
-    width: 100%;
     border-collapse: collapse;
     min-width: 1000px;
     margin-bottom: 1rem;
 }
 
-.time-table th,
-.time-table td {
-    padding: 0.75rem;
-    text-align: left;
-    border: 1px solid var(--border-color);
-    font-size: 0.9rem;
-}
-
 .time-table thead th {
-    background-color: #f8f9fa;
-    font-weight: 500;
     position: sticky;
     top: 0;
-    z-index: 1;
-    text-align: center;
+    background-color: #f8f9fa;
+    z-index: 2;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
 }
 
 #locationHeaders th {
@@ -799,6 +794,13 @@ main {
     white-space: nowrap;
 }
 
+.utc-time-header {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background-color: #f8f9fa;
+}
+
 .time-table thead th {
     background-color: #f8f9fa;
     font-weight: 500;
@@ -817,6 +819,7 @@ main {
     padding: 0.5rem 0.75rem;
     cursor: pointer;
     transition: background-color 0.2s ease;
+    font-size: 0.85rem;
 }
 
 .time-table td.time-cell:hover {
@@ -1054,4 +1057,49 @@ main {
 
 .custom-marker svg {
     filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
+}
+
+.meeting-planner-table {
+    position: relative;
+}
+
+.meeting-planner-table th {
+    position: sticky;
+    top: 0;
+    background-color: white;
+    z-index: 1;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.meeting-planner-table th {
+    z-index: 2;
+}
+
+.meeting-planner-table th {
+    padding: 12px 16px;
+}
+
+.meeting-planner-container {
+    overflow: auto;
+    max-height: calc(100vh - 200px);
+}
+
+.meeting-planner-table {
+    position: relative;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.meeting-planner-table thead th {
+    position: sticky;
+    top: 0;
+    background-color: white;
+    z-index: 2;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+    padding: 12px 16px;
+}
+
+/* Robust sticky headers with hardware acceleration */
+.time-grid {
+    isolation: isolate;
 }

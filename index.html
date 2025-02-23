@@ -78,21 +78,23 @@
         <div class="tab-content" id="meeting-planner">
             <div class="meeting-planner-content">
                 <div class="time-grid">
-                    <table class="time-table">
-                        <thead>
-                            <tr>
-                                <th class="utc-time-header">UTC-time</th>
-                                <th colspan="24">Choose a suitable time, using the color code for orientation (legend below). Click the time slot for a detailed summary of your meeting times.</th>
-                            </tr>
-                            <tr id="locationHeaders">
-                                <th></th>
-                                <!-- Location headers will be added dynamically -->
-                            </tr>
-                        </thead>
-                        <tbody id="timeGridBody">
-                            <!-- Time grid rows will be added dynamically -->
-                        </tbody>
-                    </table>
+                    <div class="time-table-container">
+                        <table class="time-table">
+                            <thead>
+                                <tr>
+                                    <th class="utc-time-header"></th>
+                                    <th colspan="24">Choose a suitable time, using the color code for orientation (legend below). Click the time slot for a detailed summary of your meeting times.</th>
+                                </tr>
+                                <tr id="locationHeaders">
+                                    <th>UTC-time</th>
+                                    <!-- Location headers will be added dynamically -->
+                                </tr>
+                            </thead>
+                            <tbody id="timeGridBody">
+                                <!-- Time grid rows will be added dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
                     <div class="time-legend">
                         <div class="legend-item">
                             <div class="legend-color working-hours"></div>

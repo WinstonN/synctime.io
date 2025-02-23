@@ -976,17 +976,18 @@ class TimeZoneManager {
 
         // Handle date selection
         nativeDateInput.addEventListener('change', (e) => {
-            // Get the selected date in the local timezone
+            console.log('[initializeDatePicker] Date selected:', e.target.value);
             const selectedDate = new Date(e.target.value);
-            // Set time to noon to avoid timezone crossing issues
+            console.log('[initializeDatePicker] Parsed Date:', selectedDate);
+            
             selectedDate.setHours(12, 0, 0, 0);
             this.selectedDate = selectedDate;
+            console.log('[initializeDatePicker] Stored Date:', this.selectedDate);
             
             // Update both displays
             this.updateDatePickerDisplay(dateText);
             this.updateDateDisplay();
             
-            // Use existing method to update all timezones
             this.updateAllTimezones();
             this.onStateChange();
         });
@@ -1004,12 +1005,21 @@ class TimeZoneManager {
     updateDateDisplay() {
         const primaryDate = document.querySelector('.primary-date');
         if (primaryDate) {
-            primaryDate.textContent = this.selectedDate.toLocaleDateString('en-US', {
+            console.log('[updateDateDisplay] Selected Date:', this.selectedDate);
+            console.log('[updateDateDisplay] Local Date:', this.selectedDate.toLocaleString());
+            console.log('[updateDateDisplay] UTC Date:', this.selectedDate.toISOString());
+            
+            const formattedDate = this.selectedDate.toLocaleDateString('en-US', {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
             });
+            
+            console.log('[updateDateDisplay] Formatted Date:', formattedDate);
+            primaryDate.textContent = formattedDate;
+        } else {
+            console.error('[updateDateDisplay] Primary date element not found');
         }
     }
     
