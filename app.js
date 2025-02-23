@@ -24,6 +24,7 @@ class TimeZoneManager {
         this.removeAllButton = document.getElementById('removeAll');
         this.copyUrlButton = document.getElementById('copyUrl');
         this.timeGridBody = document.getElementById('timeGridBody');
+        this.createCalendarButton = document.getElementById('createCalendarEvent');
         
         // Create debounced update function
         this.debouncedUpdateUrl = this.debounce(() => {
@@ -643,6 +644,13 @@ class TimeZoneManager {
                     this.hideSearchResults();
                     this.render();
                 }
+            });
+        }
+        
+        // Add event listener for the create calendar event button
+        if (this.createCalendarButton) {
+            this.createCalendarButton.addEventListener('click', () => {
+                this.createCalendarEvent();
             });
         }
     }
@@ -1723,6 +1731,144 @@ class TimeZoneManager {
             console.error('Failed to copy URL:', err);
             this.showCopyAnimation('Failed to copy', 'copyUrl');
         });
+    }
+    
+    createCalendarEvent() {
+        try {
+            // Get all timezone entries
+            const entries = document.querySelectorAll('.timezone-entry');
+            if (!entries.length) {
+                console.warn('No timezone entries found');
+                return;
+            }
+
+            // Get the date and time from the first timezone entry
+            const firstEntry = entries[0];
+            const timezone = firstEntry.getAttribute('data-timezone');
+            const slider = firstEntry.querySelector('.timeline-slider');
+            const value = parseInt(slider.value);
+            const hours = Math.floor(value / 4);
+            const minutes = (value % 4) * 15;
+
+            // Create a date object for the event
+            const eventDate = new Date(this.selectedDate);
+            eventDate.setHours(hours, minutes, 0, 0);
+
+            // Format timezone information for description
+            let description = 'Event times in different timezones:\n\n';
+            entries.forEach(entry => {
+                const tz = entry.getAttribute('data-timezone');
+                const timeDisplay = entry.querySelector('.timezone-hour').textContent;
+                const dateDisplay = entry.querySelector('.timezone-date').textContent;
+                description += `${tz}: ${dateDisplay} ${timeDisplay}\n`;
+            });
+
+            // Create calendar links
+            const title = encodeURIComponent('New Event');
+            const encodedDesc = encodeURIComponent(description);
+            const dateString = eventDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+            // Google Calendar
+            const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateString}/${dateString}&details=${encodedDesc}`;
+
+            // Outlook Calendar
+            const outlookUrl = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${title}&startdt=${dateString}&enddt=${dateString}&body=${encodedDesc}`;
+
+            // Yahoo Calendar
+            const yahooUrl = `https://calendar.yahoo.com/?v=60&title=${title}&st=${dateString}&desc=${encodedDesc}`;
+
+            // Create and show the calendar selection dialog
+            const dialog = document.createElement('div');
+            dialog.className = 'calendar-dialog';
+            dialog.innerHTML = `
+                <div class="calendar-dialog-content">
+                    <h3>Create Calendar Event</h3>
+                    <p>Choose your calendar service:</p>
+                    <div class="calendar-buttons">
+                        <a href="${googleUrl}" target="_blank" class="calendar-button google">Google Calendar</a>
+                        <a href="${outlookUrl}" target="_blank" class="calendar-button outlook">Outlook Calendar</a>
+                        <a href="${yahooUrl}" target="_blank" class="calendar-button yahoo">Yahoo Calendar</a>
+                    </div>
+                    <button class="close-dialog">Close</button>
+                </div>
+            `;
+
+            // Add dialog styles
+            const style = document.createElement('style');
+            style.textContent = `
+                .calendar-dialog {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                }
+                .calendar-dialog-content {
+                    background: white;
+                    padding: 20px;
+                    border-radius: 8px;
+                    max-width: 400px;
+                    width: 90%;
+                }
+                .calendar-buttons {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                    margin: 20px 0;
+                }
+                .calendar-button {
+                    padding: 10px;
+                    border-radius: 4px;
+                    text-decoration: none;
+                    color: white;
+                    text-align: center;
+                    font-weight: bold;
+                }
+                .calendar-button.google {
+                    background: #4285f4;
+                }
+                .calendar-button.outlook {
+                    background: #0078d4;
+                }
+                .calendar-button.yahoo {
+                    background: #6001d2;
+                }
+                .close-dialog {
+                    width: 100%;
+                    padding: 10px;
+                    border: none;
+                    background: #e0e0e0;
+                    border-radius: 4px;
+                    cursor: pointer;
+                }
+                .close-dialog:hover {
+                    background: #d0d0d0;
+                }
+            `;
+
+            document.head.appendChild(style);
+            document.body.appendChild(dialog);
+
+            // Handle dialog close
+            dialog.querySelector('.close-dialog').addEventListener('click', () => {
+                dialog.remove();
+            });
+
+            // Close dialog when clicking outside
+            dialog.addEventListener('click', (e) => {
+                if (e.target === dialog) {
+                    dialog.remove();
+                }
+            });
+
+        } catch (error) {
+            console.error('Error creating calendar event:', error);
+        }
     }
     
     createTimezoneEntry(timezone) {
