@@ -1137,7 +1137,7 @@ main {
 .features {
   margin-top: 2rem;
   padding: 1.5rem;
-  background: #f8f9fa;
+  background: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -1166,4 +1166,11 @@ main {
   left: 0;
   color: #007bff;
   font-size: 1.2rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+  font-size: 1.1rem;
 }
