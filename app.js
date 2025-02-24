@@ -388,7 +388,10 @@ class TimeZoneManager {
                 
                 // Update popup time when opened
                 marker.on('popupopen', () => {
-                    const timeEl = marker.getPopup().getContent().querySelector('.time');
+                    const content = marker.getPopup().getContent();
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = content;
+                    const timeEl = tempDiv.querySelector('.time');
                     if (timeEl) {
                         const formatter = new Intl.DateTimeFormat('en-US', {
                             timeZone: timezone,
@@ -649,9 +652,8 @@ class TimeZoneManager {
                 if (e.target.classList.contains('location-info')) {
                     const timezone = e.target.parentNode.getAttribute('data-timezone');
                     this.addTimezone(timezone);
-                    this.searchInput.value = '';
                     this.hideSearchResults();
-                    this.render();
+                    this.searchInput.value = '';
                 }
             });
         }
@@ -1629,7 +1631,7 @@ class TimeZoneManager {
             const [hours, minutes] = timeValue.split(':').map(Number);
             const tzDate = new Date(referenceDate);
             tzDate.setHours(hours, minutes, 0, 0);
-            
+
             // Format the date and time
             const dateStr = tzDate.toLocaleDateString('en-US', {
                 timeZone: timezone,
