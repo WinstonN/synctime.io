@@ -1174,3 +1174,21 @@ main {
   color: #666;
   font-size: 1.1rem;
 }
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+}
+
+.logo-container .material-icons {
+    color: #3498db;
+    font-size: 24px;
+}
+
+.logo-container .logo-text {
+    color: #3498db;
+    font-weight: bold;
+    font-size: 24px;
+    margin-left: 8px;
+}
