@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://synctime.io/sitemap.xml

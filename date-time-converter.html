@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Date Time Converter - Convert Date and Time Between Time Zones | SyncTime.io</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/3.5.0/css/flag-icon.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.43/moment-timezone-with-data.min.js"></script>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+
+    <meta name="description" content="Free online date time converter. Convert dates and times between multiple time zones instantly. Perfect for international meetings, travel planning, and global scheduling.">
+    <meta name="keywords" content="date time converter, convert date and time, date converter, time converter, date and time conversion, international date converter">
+    <meta property="og:title" content="Date Time Converter - Convert Date and Time Between Time Zones | SyncTime.io">
+    <meta property="og:description" content="Free online date time converter. Convert dates and times between multiple time zones instantly. Perfect for international meetings and scheduling.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://synctime.io/date-time-converter.html">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Date Time Converter - Convert Date and Time Between Time Zones | SyncTime.io">
+    <meta name="twitter:description" content="Free online date time converter. Convert dates and times between multiple time zones instantly.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://synctime.io/date-time-converter.html">
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "SyncTime - Date Time Converter",
+      "description": "Free online date time converter. Convert and compare dates and times across multiple timezones instantly. Perfect for scheduling international meetings and events.",
+      "applicationCategory": "Productivity",
+      "operatingSystem": "Web",
+      "screenshot": "https://www.synctime.io/images/screenshot.jpg",
+      "offers": {
+        "@type": "Offer",
+        "price": "0.00",
+        "priceCurrency": "USD"
+      },
+      "url": "https://synctime.io/date-time-converter.html",
+      "sameAs": ["https://synctime.io"],
+      "keywords": "date time converter, convert date and time, date converter, time converter"
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "How to Convert Date and Time Between Time Zones",
+      "description": "A simple guide to convert date and time between different time zones using SyncTime.io",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Add locations",
+          "text": "Use the search bar to add the locations or time zones you want to compare"
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Select date and time",
+          "text": "Click on any time or date display to adjust it to your desired value"
+        },
+        {
+          "@type": "HowToStep",
+          "name": "View converted times",
+          "text": "All other locations will automatically display the equivalent time and date"
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Copy or share results",
+          "text": "Use the copy button to copy the converted times or generate a shareable link"
+        }
+      ]
+    }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="logo-container">
+            <span class="material-icons logo-icon">update</span>
+            <a href="index.html" class="logo-text">synctime.io</a>
+        </div>
+        
+        <nav class="main-nav">
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="date-time-converter.html" class="active">Date Time Converter</a></li>
+                <li><a href="time-zone-converter.html">Time Zone Converter</a></li>
+            </ul>
+        </nav>
+        
+        <header class="header-controls">
+            <div class="add-locations">
+                <h2>Add locations</h2>
+                <div class="search-container">
+                    <input type="text" id="timezoneSearch" class="search-input" placeholder="Search for city or time zone...">
+                    <span class="material-icons search-icon">search</span>
+                    <div id="searchResults" class="search-results">
+                        <!-- Search results will be populated here -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button id="timeFormat" class="text-button">
+                    <span class="material-icons">schedule</span>
+                    <span id="timeFormatText">24h</span>
+                </button>
+                <button id="removeAll" class="text-button danger">
+                    <span class="material-icons">delete</span>
+                    Remove all
+                </button>
+            </div>
+        </header>
+
+        <div class="content-area">
+            <h1>Date Time Converter</h1>
+            <p class="intro-text">Convert dates and times between multiple time zones instantly. Perfect for international meetings, travel planning, and coordinating across different countries.</p>
+            
+            <div class="timezone-list" id="timezoneList">
+                <!-- Timezone entries will be added here dynamically -->
+            </div>
+
+            <div class="controls-panel">
+                <button id="createCalendarEvent" class="control-button" title="Create calendar event with these times">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                        <circle cx="12" cy="15" r="2"></circle>
+                    </svg>
+                    Create Calendar Event
+                </button>
+                <button id="copyUrl" class="control-button" title="Copy shareable link with current timezone settings">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                    </svg>
+                    Copy Link
+                </button>
+                <button id="copyTimezones" class="control-button" title="Copy current timezone information to clipboard">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    Copy Times
+                </button>
+            </div>
+            
+            <section class="features">
+              <h2>Why Use Our Date Time Converter?</h2>
+              <ul>
+                <li><strong>Accurate Date & Time Conversion:</strong> Convert dates and times between any time zones with precision.</li>
+                <li><strong>User-Friendly Interface:</strong> Simple, intuitive design makes date and time conversion effortless.</li>
+                <li><strong>Multiple Time Zones:</strong> Compare dates and times across unlimited locations simultaneously.</li>
+                <li><strong>Calendar Integration:</strong> Create calendar events with the correct times in each participant's time zone.</li>
+                <li><strong>Shareable Links:</strong> Share your date and time conversions with others via a simple link.</li>
+                <li><strong>Completely Free:</strong> No registration or payment required to use our date time converter.</li>
+              </ul>
+            </section>
+            
+            <section class="how-to">
+              <h2>How to Convert Date and Time Between Time Zones</h2>
+              <ol>
+                <li>
+                  <h3>Add locations</h3>
+                  <p>Use the search bar at the top to add the locations or time zones you want to compare.</p>
+                </li>
+                <li>
+                  <h3>Select date and time</h3>
+                  <p>Click on any time or date display to adjust it to your desired value.</p>
+                </li>
+                <li>
+                  <h3>View converted times</h3>
+                  <p>All other locations will automatically display the equivalent time and date.</p>
+                </li>
+                <li>
+                  <h3>Copy or share results</h3>
+                  <p>Use the copy button to copy the converted times or generate a shareable link.</p>
+                </li>
+              </ol>
+            </section>
+            
+            <section class="faq">
+              <h2>Frequently Asked Questions</h2>
+              <div class="faq-item">
+                <h3>How do I convert a specific date and time to another time zone?</h3>
+                <p>Simply add both time zones using the search bar, then click on the time display for your source time zone and set your desired date and time. The equivalent time will automatically appear for the target time zone.</p>
+              </div>
+              <div class="faq-item">
+                <h3>Does the date time converter account for Daylight Saving Time?</h3>
+                <p>Yes, our date time converter automatically accounts for Daylight Saving Time (DST) changes in all supported regions. You'll always get the correct conversion regardless of when DST starts or ends in different locations.</p>
+              </div>
+              <div class="faq-item">
+                <h3>Can I convert historical dates and times?</h3>
+                <p>Yes, you can convert dates and times from the past or future. Our converter takes into account historical time zone changes and DST rules to provide accurate conversions for any date.</p>
+              </div>
+              <div class="faq-item">
+                <h3>How many time zones can I compare at once?</h3>
+                <p>There is no limit to the number of time zones you can add and compare simultaneously. Add as many locations as you need for your date and time conversion needs.</p>
+              </div>
+              <div class="faq-item">
+                <h3>Can I save my frequently used time zone combinations?</h3>
+                <p>While we don't currently offer user accounts for saving preferences, you can generate a shareable link with your current time zone selections. Bookmark this link to quickly access your preferred time zone combination in the future.</p>
+              </div>
+            </section>
+        </div>
+        
+        <footer>
+            <p>© 2025 SyncTime.io - The best free online date time converter and time zone converter tool</p>
+            <p>Convert between any time zones instantly. Perfect for scheduling international meetings, travel planning, and global coordination.</p>
+            <nav class="footer-nav">
+                <a href="index.html">Home</a> | 
+                <a href="date-time-converter.html">Date Time Converter</a> | 
+                <a href="time-zone-converter.html">Time Zone Converter</a>
+            </nav>
+        </footer>
+    </div>
+    <script src="country-flags.js"></script>
+    <script src="timezone-data.js"></script>
+    <script src="app.js"></script>
+    
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-7CB7SV324Z"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-7CB7SV324Z');
+    </script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8811889383983250" crossorigin="anonymous"></script>
+</body>
+</html>
