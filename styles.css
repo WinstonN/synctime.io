@@ -1239,11 +1239,11 @@ main {
 /* FAQ Section */
 .faq {
     margin-top: 2rem;
-    background-color: var(--card-background);
-    border-radius: 8px;
     padding: 1.5rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
 
 .faq h2 {
     margin-bottom: 1.5rem;
