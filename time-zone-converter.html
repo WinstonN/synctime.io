@@ -200,7 +200,7 @@
         </div>
         
         <footer>
-            <p>© 2025 SyncTime.io - The best free online date time converter and time zone converter tool</p>
+            <p>&copy; 2025 SyncTime.io - The best free online date time converter and time zone converter tool</p>
             <p>Convert between any time zones instantly. Perfect for scheduling international meetings, travel planning, and global coordination.</p>
             <nav class="footer-nav">
                 <a href="index.html">Home</a> | 
@@ -211,6 +211,17 @@
     </div>
     <script src="country-flags.js"></script>
     <script src="timezone-data.js"></script>
+    <script>
+    // Unregister any existing service workers
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for (let registration of registrations) {
+                registration.unregister();
+                console.log('Service worker unregistered');
+            }
+        });
+    }
+    </script>
     <script src="app.js"></script>
     
     <!-- Google tag (gtag.js) -->
