@@ -1474,13 +1474,20 @@ class TimeZoneManager {
                 year: 'numeric'
             });
             
-            const timeStr = referenceDate.toLocaleTimeString('en-US', {
-                timeZone: timezone,
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: !this.use24Hour
-            });
-            
+            const timeStr = this.use24Hour ? 
+                referenceDate.toLocaleTimeString('en-US', {
+                    timeZone: timezone,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                }) :
+                referenceDate.toLocaleTimeString('en-US', {
+                    timeZone: timezone,
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+
             return { dateStr, timeStr };
         } catch (e) {
             console.error('Error formatting time for timezone:', timezone, e);
@@ -1597,59 +1604,46 @@ class TimeZoneManager {
 
         let info = 'Current Time Zones:\n\n';
         
-        // Get the date and timezone configurations from URL
-        const params = new URLSearchParams(window.location.search);
-        const dateParam = params.get('date');
-        const zonesParam = params.get('zones') || '';
-        const zoneConfigs = zonesParam.split(',');
+        // Get the reference timezone (first in the list)
+        const referenceTimezone = timezones[0];
+        const referenceSlider = document.querySelector(`[data-timezone="${referenceTimezone}"] input[type="range"]`);
         
-        // Parse the reference date
-        const referenceDate = dateParam ? new Date(dateParam) : new Date();
-        
+        if (!referenceSlider) {
+            this.showCopyAnimation('Error: Could not find reference timezone');
+            return;
+        }
+
+        // Get the time from the reference slider
+        const sliderValue = parseInt(referenceSlider.value);
+        const hours = Math.floor(sliderValue / 4);
+        const minutes = (sliderValue % 4) * 15;
+
+        // Create a moment in the reference timezone at the selected date and time
+        const referenceMoment = moment.tz(referenceTimezone)
+            .year(this.selectedDate.getFullYear())
+            .month(this.selectedDate.getMonth())
+            .date(this.selectedDate.getDate())
+            .hour(hours)
+            .minute(minutes)
+            .second(0)
+            .millisecond(0);
+
         timezones.forEach(timezone => {
             const tzData = this.getTimezoneData(timezone);
             
-            // Find this timezone's configuration from URL
-            const zoneConfig = zoneConfigs.find(config => config.startsWith(timezone + '@'));
-            let timeValue = '00:00';
+            // Convert the reference moment to this timezone
+            const tzMoment = referenceMoment.clone().tz(timezone);
             
-            if (zoneConfig) {
-                // Extract time from zone config (format: timezone@HH:mm)
-                timeValue = zoneConfig.split('@')[1];
-            } else {
-                // Fallback to slider value if URL config not found
-                const slider = document.querySelector(`[data-timezone="${timezone}"] input[type="range"]`);
-                if (slider) {
-                    const value = parseInt(slider.value);
-                    const hours = Math.floor(value / 4).toString().padStart(2, '0');
-                    const minutes = (value % 4) * 15;
-                    timeValue = `${hours}:${minutes.toString().padStart(2, '0')}`;
-                }
-            }
-
-            // Create a date object for this timezone's time
-            const [hours, minutes] = timeValue.split(':').map(Number);
-            const tzDate = new Date(referenceDate);
-            tzDate.setHours(hours, minutes, 0, 0);
-
-            // Format the date and time
-            const dateStr = tzDate.toLocaleDateString('en-US', {
-                timeZone: timezone,
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric'
-            });
+            // Format the date
+            const dateStr = tzMoment.format('ddd, MMM D');
             
+            // Format the time based on 24h/12h preference
             const timeStr = this.use24Hour ? 
-                timeValue :
-                tzDate.toLocaleTimeString('en-US', {
-                    timeZone: timezone,
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true
-                });
+                tzMoment.format('HH:mm') :
+                tzMoment.format('hh:mm A');
 
-            const offset = this.getTimezoneOffset(timezone);
+            // Get timezone offset
+            const offset = tzMoment.utcOffset() / 60;
             const offsetStr = `UTC${offset >= 0 ? '+' : ''}${offset}`;
             
             info += `${tzData.city}, ${tzData.country}\n`;
