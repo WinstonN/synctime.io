@@ -683,11 +683,11 @@ class TimeZoneManager {
         const minutes = (value % 4) * 15;
 
         try {
-            // Create a moment object from the selected date
-            const selectedMoment = moment(this.selectedDate);
-            
-            // Set the time in the source timezone
-            const sourceMoment = moment.tz(selectedMoment, timezone)
+            // Create a moment in the source timezone with the selected date components
+            const sourceMoment = moment.tz(timezone)
+                .year(this.selectedDate.getFullYear())
+                .month(this.selectedDate.getMonth())
+                .date(this.selectedDate.getDate())
                 .hour(hours)
                 .minute(minutes)
                 .second(0)
