@@ -1182,7 +1182,7 @@ main {
 .features h2 {
   font-size: 1.5rem;
   margin-bottom: 1rem;
-  color: #333;
+  color: var(--primary-color);
 }
 
 .features ul {
@@ -1247,7 +1247,7 @@ main {
 
 .faq h2 {
     margin-bottom: 1.5rem;
-    color: var(--text-color);
+    color: var(--primary-color);
     font-size: 1.5rem;
 }
 
@@ -1266,7 +1266,7 @@ main {
 .faq-item h3 {
     margin-bottom: 0.75rem;
     font-size: 1.1rem;
-    color: var(--primary-color);
+    color: var(--text-color);
 }
 
 .faq-item p {
@@ -1440,7 +1440,7 @@ footer p:last-child {
 
 .how-to h2 {
     margin-bottom: 1.5rem;
-    color: var(--text-color);
+    color: var(--primary-color);
     font-size: 1.5rem;
 }
 
@@ -1454,7 +1454,7 @@ footer p:last-child {
 
 .how-to h3 {
     margin-bottom: 0.5rem;
-    color: var(--primary-color);
+    color: var(--text-color);
     font-size: 1.1rem;
 }
 
