@@ -1596,66 +1596,13 @@ class TimeZoneManager {
     }
     
     copyTimezoneInformation() {
-        const timezones = Array.from(this.timezones);
-        if (timezones.length === 0) {
+        const result = this.generateTimezoneDescription();
+        if (!result) {
             this.showCopyAnimation('No timezones to copy');
             return;
         }
 
-        let info = 'Current Time Zones:\n\n';
-        
-        // Get the reference timezone (first in the list)
-        const referenceTimezone = timezones[0];
-        const referenceSlider = document.querySelector(`[data-timezone="${referenceTimezone}"] input[type="range"]`);
-        
-        if (!referenceSlider) {
-            this.showCopyAnimation('Error: Could not find reference timezone');
-            return;
-        }
-
-        // Get the time from the reference slider
-        const sliderValue = parseInt(referenceSlider.value);
-        const hours = Math.floor(sliderValue / 4);
-        const minutes = (sliderValue % 4) * 15;
-
-        // Create a moment in the reference timezone at the selected date and time
-        const referenceMoment = moment.tz(referenceTimezone)
-            .year(this.selectedDate.getFullYear())
-            .month(this.selectedDate.getMonth())
-            .date(this.selectedDate.getDate())
-            .hour(hours)
-            .minute(minutes)
-            .second(0)
-            .millisecond(0);
-
-        timezones.forEach(timezone => {
-            const tzData = this.getTimezoneData(timezone);
-            
-            // Convert the reference moment to this timezone
-            const tzMoment = referenceMoment.clone().tz(timezone);
-            
-            // Format the date
-            const dateStr = tzMoment.format('ddd, MMM D');
-            
-            // Format the time based on 24h/12h preference
-            const timeStr = this.use24Hour ? 
-                tzMoment.format('HH:mm') :
-                tzMoment.format('hh:mm A');
-
-            // Get timezone offset
-            const offset = tzMoment.utcOffset() / 60;
-            const offsetStr = `UTC${offset >= 0 ? '+' : ''}${offset}`;
-            
-            info += `${tzData.city}, ${tzData.country}\n`;
-            info += `${timezone} (${offsetStr})\n`;
-            info += `${dateStr} at ${timeStr}\n\n`;
-        });
-
-        // Add the shareable URL at the bottom
-        info += '\nShare this configuration:\n';
-        info += window.location.href;
-
-        navigator.clipboard.writeText(info).then(() => {
+        navigator.clipboard.writeText(result.info).then(() => {
             this.showCopyAnimation('Timezone information copied!');
         }).catch(err => {
             console.error('Failed to copy:', err);
@@ -1663,79 +1610,21 @@ class TimeZoneManager {
         });
     }
     
-    showCopyAnimation(message, buttonId = 'copyTimezones') {
-        const button = document.getElementById(buttonId);
-        if (button) {
-            // Add success class
-            button.classList.add('copy-success');
-            
-            // Create tooltip
-            const tooltip = document.createElement('div');
-            tooltip.className = 'copy-tooltip';
-            tooltip.textContent = message;
-            
-            // Position tooltip
-            button.appendChild(tooltip);
-            
-            setTimeout(() => {
-                button.classList.remove('copy-success');
-                tooltip.remove();
-            }, 1000);
-        }
-    }
-    
-    copyCurrentUrl() {
-        navigator.clipboard.writeText(window.location.href).then(() => {
-            this.showCopyAnimation('Link copied!', 'copyUrl');
-        }).catch(err => {
-            console.error('Failed to copy URL:', err);
-            this.showCopyAnimation('Failed to copy', 'copyUrl');
-        });
-    }
-    
     createCalendarEvent() {
         try {
-            // Get all timezone entries
-            const entries = document.querySelectorAll('.timezone-entry');
-            if (!entries.length) {
-                console.warn('No timezone entries found');
+            const result = this.generateTimezoneDescription();
+            if (!result) {
+                console.warn('No timezones to add to calendar');
                 return;
             }
 
-            // Get the date and time from the first timezone entry
-            const firstEntry = entries[0];
-            const timezone = firstEntry.getAttribute('data-timezone');
-            const slider = firstEntry.querySelector('.timeline-slider');
-            const value = parseInt(slider.value);
-            const hours = Math.floor(value / 4);
-            const minutes = (value % 4) * 15;
-
-            // Create a date object for the event
-            const eventDate = new Date(this.selectedDate);
-            eventDate.setHours(hours, minutes, 0, 0);
-
-            // Format timezone information for description
-            let description = 'Event times in different timezones:\n\n';
-            entries.forEach(entry => {
-                const tz = entry.getAttribute('data-timezone');
-                const timeDisplay = entry.querySelector('.timezone-hour').textContent;
-                const dateDisplay = entry.querySelector('.timezone-date').textContent;
-                description += `${tz}: ${dateDisplay} ${timeDisplay}\n`;
-            });
+            const { info, referenceMoment } = result;
 
             // Create calendar links
             const title = encodeURIComponent('New Event');
-            const encodedDesc = encodeURIComponent(description);
-            const dateString = eventDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-
-            // Google Calendar
-            const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateString}/${dateString}&details=${encodedDesc}`;
-
-            // Outlook Calendar
-            const outlookUrl = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${title}&startdt=${dateString}&enddt=${dateString}&body=${encodedDesc}`;
-
-            // Yahoo Calendar
-            const yahooUrl = `https://calendar.yahoo.com/?v=60&title=${title}&st=${dateString}&desc=${encodedDesc}`;
+            const encodedDesc = encodeURIComponent(info);
+            const dateString = referenceMoment.format('YYYYMMDDTHHmmss[Z]');
+            const endDateString = referenceMoment.clone().add(1, 'hour').format('YYYYMMDDTHHmmss[Z]');
 
             // Create and show the calendar selection dialog
             const dialog = document.createElement('div');
@@ -1745,9 +1634,9 @@ class TimeZoneManager {
                     <h3>Create Calendar Event</h3>
                     <p>Choose your calendar service:</p>
                     <div class="calendar-buttons">
-                        <a href="${googleUrl}" target="_blank" class="calendar-button google">Google Calendar</a>
-                        <a href="${outlookUrl}" target="_blank" class="calendar-button outlook">Outlook Calendar</a>
-                        <a href="${yahooUrl}" target="_blank" class="calendar-button yahoo">Yahoo Calendar</a>
+                        <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateString}/${endDateString}&details=${encodedDesc}" target="_blank" class="calendar-button google">Google Calendar</a>
+                        <a href="https://outlook.live.com/calendar/0/deeplink/compose?subject=${title}&startdt=${dateString}&enddt=${endDateString}&body=${encodedDesc}" target="_blank" class="calendar-button outlook">Outlook Calendar</a>
+                        <a href="https://calendar.yahoo.com/?v=60&title=${title}&st=${dateString}&desc=${encodedDesc}" target="_blank" class="calendar-button yahoo">Yahoo Calendar</a>
                     </div>
                     <button class="close-dialog">Close</button>
                 </div>
@@ -1829,6 +1718,85 @@ class TimeZoneManager {
         } catch (error) {
             console.error('Error creating calendar event:', error);
         }
+    }
+    
+    generateTimezoneDescription() {
+        const timezones = Array.from(this.timezones);
+        if (timezones.length === 0) {
+            return null;
+        }
+
+        // Get the reference timezone (first in the list)
+        const referenceTimezone = timezones[0];
+        const referenceSlider = document.querySelector(`[data-timezone="${referenceTimezone}"] input[type="range"]`);
+        
+        if (!referenceSlider) {
+            return null;
+        }
+
+        // Get the time from the reference slider
+        const sliderValue = parseInt(referenceSlider.value);
+        const hours = Math.floor(sliderValue / 4);
+        const minutes = (sliderValue % 4) * 15;
+
+        // Create a moment in the reference timezone at the selected date and time
+        const referenceMoment = moment.tz(referenceTimezone)
+            .year(this.selectedDate.getFullYear())
+            .month(this.selectedDate.getMonth())
+            .date(this.selectedDate.getDate())
+            .hour(hours)
+            .minute(minutes)
+            .second(0)
+            .millisecond(0);
+
+        let info = 'Current Time Zones:\n\n';
+        timezones.forEach(timezone => {
+            const tzData = this.getTimezoneData(timezone);
+            const tzMoment = referenceMoment.clone().tz(timezone);
+            const dateStr = tzMoment.format('ddd, MMM D');
+            const timeStr = this.use24Hour ? tzMoment.format('HH:mm') : tzMoment.format('hh:mm A');
+            const offset = tzMoment.utcOffset() / 60;
+            const offsetStr = `UTC${offset >= 0 ? '+' : ''}${offset}`;
+            
+            info += `${tzData.city}, ${tzData.country}\n`;
+            info += `${timezone} (${offsetStr})\n`;
+            info += `${dateStr} at ${timeStr}\n\n`;
+        });
+
+        info += '\nShare this configuration:\n';
+        info += window.location.href;
+
+        return { info, referenceMoment };
+    }
+    
+    showCopyAnimation(message, buttonId = 'copyTimezones') {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            // Add success class
+            button.classList.add('copy-success');
+            
+            // Create tooltip
+            const tooltip = document.createElement('div');
+            tooltip.className = 'copy-tooltip';
+            tooltip.textContent = message;
+            
+            // Position tooltip
+            button.appendChild(tooltip);
+            
+            setTimeout(() => {
+                button.classList.remove('copy-success');
+                tooltip.remove();
+            }, 1000);
+        }
+    }
+    
+    copyCurrentUrl() {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            this.showCopyAnimation('Link copied!', 'copyUrl');
+        }).catch(err => {
+            console.error('Failed to copy URL:', err);
+            this.showCopyAnimation('Failed to copy', 'copyUrl');
+        });
     }
     
     createTimezoneEntry(timezone) {
