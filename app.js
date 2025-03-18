@@ -661,9 +661,11 @@ class TimeZoneManager {
                 if (e.target.classList.contains('location-info')) {
                     const timezone = e.target.parentNode.getAttribute('data-timezone');
                     const city = e.target.parentNode.getAttribute('data-city');
-                    this.addTimezone(timezone, city);
-                    this.hideSearchResults();
-                    this.searchInput.value = '';
+                    if (timezone) {
+                        this.addTimezone(timezone, city);
+                        this.hideSearchResults();
+                        this.searchInput.value = '';
+                    }
                 }
             });
         }
@@ -1420,9 +1422,17 @@ class TimeZoneManager {
     }
 
     removeTimezone(timezone) {
-        this.timezones.delete(timezone);
-        this.render();
-        this.onStateChange();
+        // Find and remove the timezone entry with the matching timezone part
+        const timezoneToRemove = Array.from(this.timezones).find(key => {
+            const [tz] = key.split('|');
+            return tz === timezone;
+        });
+        
+        if (timezoneToRemove) {
+            this.timezones.delete(timezoneToRemove);
+            this.render();
+            this.onStateChange();
+        }
     }
 
     removeAllTimezones() {
@@ -1557,18 +1567,10 @@ class TimeZoneManager {
             }
             
             // Calculate sunrise using astronomical formula
-            const { latitude, longitude } = coordinates;
-            
-            // Day of the year (1-366)
-            const start = new Date(date.getFullYear(), 0, 0);
-            const diff = date - start;
-            const dayOfYear = Math.floor(diff / 86400000);
-            
-            // Calculate approximate sunrise time
             // This is a simplified calculation that gives a reasonable approximation
             
             // Convert latitude to radians
-            const latRad = latitude * Math.PI / 180;
+            const latRad = coordinates.latitude * Math.PI / 180;
             
             // Solar declination
             const declination = 0.4093 * Math.sin((2 * Math.PI * (284 + dayOfYear)) / 365);
@@ -1588,7 +1590,7 @@ class TimeZoneManager {
             const sunriseHourUTC = 12 - (hourAngle * 180 / Math.PI) / 15;
             
             // Adjust for longitude
-            const sunriseHourLocal = sunriseHourUTC + (longitude / 15);
+            const sunriseHourLocal = sunriseHourUTC + (coordinates.longitude / 15);
             
             // Create date object for sunrise
             const sunriseDate = new Date(date);
