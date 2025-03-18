@@ -1141,6 +1141,13 @@ const timezoneData = [
         coordinates: { latitude: 39.9526, longitude: -75.1652 }
     },
     {
+        city: "Sacramento",
+        country: "United States",
+        timezone: "America/Los_Angeles",
+        utcOffset: "-08:00",
+        coordinates: { latitude: 38.5781, longitude: -121.4944 }
+    },
+    {
         city: "San Francisco",
         country: "United States",
         timezone: "America/Los_Angeles",
