@@ -336,19 +336,67 @@ body {
 
 .timezone-entry {
     position: relative;
-    background-color: var(--card-background);
-    padding: 1.25rem 2.5rem;
+    background: white;
+    border: 1px solid #e5e7eb;
     border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    margin-bottom: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.timezone-entry:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.timezone-entry.dragging {
+    opacity: 0.5;
+}
+
+.drag-handle-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    padding: 4px;
+    gap: 4px;
+    height: 100%;
+    margin-right: 4px;
+}
+
+.drag-arrow {
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+    font-size: 14px;
+    line-height: 1;
+    padding: 4px;
+}
+
+.drag-arrow:hover {
+    opacity: 1;
+    color: #666;
+}
+
+.drag-handle {
+    cursor: grab;
+    user-select: none;
+    font-size: 16px;
+    line-height: 1;
+    padding: 4px;
 }
 
 .timezone-info {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 1.5rem;
-    padding-right: 1.5rem;
+    flex: 1;
+    padding-right: 2.5rem;
+    position: relative;
 }
 
 .timezone-left {
@@ -387,24 +435,6 @@ body {
     margin-bottom: 0.5rem;
 }
 
-.drag-handle {
-    position: absolute;
-    left: 0.75rem;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #666;
-    cursor: move;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    padding: 0.5rem;
-}
-
-.timezone-entry:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}
-
 .current-time-container {
     margin-top: 0.75rem;
     padding-top: 0.75rem;
@@ -425,8 +455,10 @@ body {
 }
 
 .timeline-container {
+    grid-column: 1 / -1;
+    margin-top: 1rem;
     position: relative;
-    margin-top: 3rem;
+    padding: 0 1rem;
 }
 
 .timeline-hours {
@@ -678,25 +710,30 @@ body {
     margin-left: 8px;
 }
 
-.more-button {
+.remove-button {
     position: absolute;
-    right: 1rem;
-    top: 1rem;
+    right: 0;
+    top: 10%;
+    transform: translateY(-50%);
     background: none;
     border: none;
-    padding: 0.5rem;
-    color: #666;
+    padding: 4px;
     cursor: pointer;
-    border-radius: 6px;
+    color: #999;
     transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    border-radius: 4px;
 }
 
-.more-button:hover {
+.remove-button:hover {
     background-color: #fee2e2;
     color: #dc2626;
 }
 
-.more-button .material-icons {
+.remove-button .material-icons {
     font-size: 18px;
 }
 

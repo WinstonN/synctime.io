@@ -249,7 +249,7 @@ class TimeZoneManager {
         if (this.timezones.size > 0) {
             const timezones = Array.from(this.timezones).map(timezoneKey => {
                 const [timezone, city] = timezoneKey.split('|');
-                const entry = document.querySelector(`[data-timezone="${timezone}"]`);
+                const entry = document.querySelector(`[data-timezone="${timezone}"][data-city="${city || ''}"]`);
                 if (entry) {
                     const slider = entry.querySelector('input[type="range"]');
                     if (slider) {
@@ -1067,11 +1067,20 @@ class TimeZoneManager {
                 }
             }
             
+            // Update the timezones Set to match the new order
+            const newOrder = Array.from(this.timezonesContainer.children).map(entry => {
+                const tz = entry.getAttribute('data-timezone');
+                const city = entry.getAttribute('data-city');
+                return city ? `${tz}|${city}` : tz;
+            });
+            this.timezones = new Set(newOrder);
+            
             this.draggedElement = null;
             this.draggedSliderValue = undefined;
             this.draggedTimezone = null;
             
             // Update state and URL
+            this.updatePrimaryLocationLabel();
             this.onStateChange();
         });
         
@@ -1086,8 +1095,6 @@ class TimeZoneManager {
             if (this.draggedElement && this.draggedElement !== element) {
                 if (referenceElement !== this.draggedElement && referenceElement !== this.draggedElement.nextSibling) {
                     this.timezonesContainer.insertBefore(this.draggedElement, referenceElement);
-                    // Update primary location label after reordering
-                    this.updatePrimaryLocationLabel();
                 }
             }
         });
@@ -1435,7 +1442,7 @@ class TimeZoneManager {
             const [referenceHour, referenceMinute] = referenceTime.split(':').map(Number);
             
             // Get the time in target timezone
-            const targetOptions = { timeZone: timezone, hour12: false, hour: 'numeric', minute: '2-digit' };
+            const targetOptions = { timeZone: timezone, hour12: false, hour: '2-digit', minute: '2-digit' };
             const targetTime = new Date().toLocaleString('en-US', targetOptions);
             const [targetHour, targetMinute] = targetTime.split(':').map(Number);
             
@@ -1837,15 +1844,19 @@ class TimeZoneManager {
         const entry = document.createElement('div');
         entry.className = 'timezone-entry';
         entry.setAttribute('data-timezone', timezone);
-        entry.setAttribute('data-city', city);
+        entry.setAttribute('data-city', city || '');
         
         entry.innerHTML = `
-            <div class="drag-handle">⋮⋮</div>
+            <div class="drag-handle-container">
+                <span class="drag-arrow up-arrow" title="Send to top">▲</span>
+                <div class="drag-handle">⋮⋮</div>
+                <span class="drag-arrow down-arrow" title="Send to bottom">▼</span>
+            </div>
             <div class="timezone-info">
                 <div class="timezone-left">
                     ${flagCode === 'un' ? '<span>🕐</span>' : `<span class="flag-icon flag-icon-${flagCode.toLowerCase()}"></span>`}
                     <div>
-                        <div class="timezone-name">${city}, ${tzData.country}</div>
+                        <div class="timezone-name">${city || tzData.city}, ${tzData.country}</div>
                         <div class="timezone-details">${timezone} (UTC${tzData.utcOffset})</div>
                     </div>
                 </div>
@@ -1860,6 +1871,9 @@ class TimeZoneManager {
                         <div class="current-time"></div>
                     </div>
                 </div>
+                <button class="remove-button" title="Remove timezone">
+                    <span class="material-icons">close</span>
+                </button>
             </div>
             <div class="timeline-container">
                 <div class="timeline-hours">
@@ -1875,19 +1889,57 @@ class TimeZoneManager {
                     class="timeline-slider"
                     title="Adjust time">
             </div>
-            <button class="more-button" title="Remove timezone">
-                <span class="material-icons">close</span>
-            </button>
         `;
         
         // Initialize the time slider
         this.initializeTimeSlider(entry, timezone);
         
         // Initialize the remove button
-        const removeButton = entry.querySelector('.more-button');
+        const removeButton = entry.querySelector('.remove-button');
         if (removeButton) {
-            removeButton.addEventListener('click', () => {
+            removeButton.addEventListener('click', (e) => {
+                e.stopPropagation();
                 this.removeTimezone(timezone);
+            });
+        }
+
+        // Initialize up/down arrows
+        const upArrow = entry.querySelector('.up-arrow');
+        const downArrow = entry.querySelector('.down-arrow');
+        const container = this.timezonesContainer;
+
+        if (upArrow && container) {
+            upArrow.addEventListener('click', () => {
+                const firstChild = container.firstChild;
+                if (firstChild !== entry) {
+                    container.insertBefore(entry, firstChild);
+                    // Update the timezones Set to match the new order
+                    const newOrder = Array.from(container.children).map(entry => {
+                        const tz = entry.getAttribute('data-timezone');
+                        const city = entry.getAttribute('data-city');
+                        return city ? `${tz}|${city}` : tz;
+                    });
+                    this.timezones = new Set(newOrder);
+                    // Update primary location label and state
+                    this.updatePrimaryLocationLabel();
+                    this.onStateChange();
+                }
+            });
+        }
+
+        if (downArrow && container) {
+            downArrow.addEventListener('click', () => {
+                container.appendChild(entry);
+                // Update the timezones Set to match the new order
+                const newOrder = Array.from(container.children).map(entry => {
+                    const tz = entry.getAttribute('data-timezone');
+                    const city = entry.getAttribute('data-city');
+                    return city ? `${tz}|${city}` : tz;
+                });
+                this.timezones = new Set(newOrder);
+                // Update primary location label and state
+                this.updatePrimaryLocationLabel();
+                this.onStateChange();
             });
         }
         
