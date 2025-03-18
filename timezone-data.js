@@ -821,8 +821,7 @@ const timezoneData = [
         utcOffset: "+13:00",
         standardOffset: "+12:00",
         dstOffset: "+13:00",
-        usesDST: true,
-        displayName: "New Zealand Time"
+        usesDST: true
     },
     {
         city: "Hamilton",
@@ -831,8 +830,7 @@ const timezoneData = [
         utcOffset: "+13:00",
         standardOffset: "+12:00",
         dstOffset: "+13:00",
-        usesDST: true,
-        displayName: "New Zealand Time"
+        usesDST: true
     },
     {
         city: "Dunedin",
@@ -841,8 +839,7 @@ const timezoneData = [
         utcOffset: "+13:00",
         standardOffset: "+12:00",
         dstOffset: "+13:00",
-        usesDST: true,
-        displayName: "New Zealand Time"
+        usesDST: true
     },
     {
         city: "Tokyo",

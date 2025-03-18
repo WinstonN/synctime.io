@@ -894,6 +894,69 @@ main {
     font-weight: 500;
 }
 
+.timezone-time {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.timezone-time-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.timezone-date {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.current-time-container {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 0.85em;
+    color: #666;
+    margin-top: 4px;
+}
+
+.current-time-label {
+    color: #999;
+    margin-right: 4px;
+    font-size: 0.82em;
+}
+
+.current-time-container .current-date {
+    font-size: 0.95em;
+}
+
+.timezone-date {
+    color: #666;
+    font-size: 1em;
+}
+
+.timezone-hour {
+    font-size: 1.3em;
+    font-weight: 500;
+}
+
+.search-results > div.selected {
+    background-color: #eef2ff;
+}
+
+.search-results > div:hover {
+    background-color: #f3f4f6;
+}
+
+.search-results > div {
+    padding: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
 .timezone-entry * {
     user-select: none;
     -webkit-user-select: none;

@@ -68,38 +68,38 @@ class TimeZoneManager {
                 // Handle both encoded and unencoded @ symbols
                 const atIndex = zoneData.indexOf('@');
                 if (atIndex === -1) {
-                    const zone = decodeURIComponent(zoneData);
-                    console.log('Processing zone without time:', zone);
-                    if (this.isValidTimezone(zone)) {
-                        console.log('Zone is valid:', zone);
-                        this.timezones.add(zone);
+                    const [timezone, city] = decodeURIComponent(zoneData).split('|');
+                    console.log('Processing zone without time:', timezone, city);
+                    if (this.isValidTimezone(timezone)) {
+                        console.log('Zone is valid:', timezone);
+                        const key = city ? `${timezone}|${city}` : timezone;
+                        this.timezones.add(key);
                         stateChanged = true;
                     }
                 } else {
-                    const zone = decodeURIComponent(zoneData.substring(0, atIndex));
-                    const time = decodeURIComponent(zoneData.substring(atIndex + 1));
-                    console.log('Processing zone:', zone, 'time:', time);
+                    const [tzPart, time] = zoneData.split('@');
+                    const [timezone, city] = decodeURIComponent(tzPart).split('|');
+                    console.log('Processing zone:', timezone, city, 'time:', time);
                     
-                    if (this.isValidTimezone(zone)) {
-                        console.log('Zone is valid:', zone);
-                        this.timezones.add(zone);
+                    if (this.isValidTimezone(timezone)) {
+                        console.log('Zone is valid:', timezone);
+                        const key = city ? `${timezone}|${city}` : timezone;
+                        this.timezones.add(key);
                         stateChanged = true;
                         
                         // If time is specified, set it after render
                         if (time) {
                             const [hours, minutes] = time.split(':').map(Number);
-                            // Convert to slider intervals (15-minute intervals, 0-95)
                             const sliderValue = (hours * 4) + Math.floor(minutes / 15);
-                            console.log('Storing time for', zone, ':', hours, ':', minutes, '=', sliderValue, 'intervals');
+                            console.log('Storing time for', timezone, ':', hours, ':', minutes, '=', sliderValue, 'intervals');
                             
-                            // Store the time to be set after render
                             if (!this.pendingTimes) {
                                 this.pendingTimes = new Map();
                             }
-                            this.pendingTimes.set(zone, sliderValue);
+                            this.pendingTimes.set(timezone, sliderValue);
                         }
                     } else {
-                        console.log('Invalid timezone:', zone);
+                        console.log('Invalid timezone:', timezone);
                     }
                 }
             });
@@ -186,8 +186,9 @@ class TimeZoneManager {
         this.timezonesContainer.innerHTML = '';
         
         // Create new entries for each timezone
-        Array.from(this.timezones).forEach((timezone, index) => {
-            const entry = this.createTimezoneEntry(timezone);
+        Array.from(this.timezones).forEach((timezoneKey, index) => {
+            const [timezone, city] = timezoneKey.split('|');
+            const entry = this.createTimezoneEntry(timezoneKey);
             
             // Add primary location label to the first entry
             if (index === 0) {
@@ -244,9 +245,10 @@ class TimeZoneManager {
         console.log('[updateStateUrl] Updating URL state');
         const params = new URLSearchParams();
         
-        // Add timezones with their current times
+        // Add timezones with their current times and cities
         if (this.timezones.size > 0) {
-            const timezones = Array.from(this.timezones).map(timezone => {
+            const timezones = Array.from(this.timezones).map(timezoneKey => {
+                const [timezone, city] = timezoneKey.split('|');
                 const entry = document.querySelector(`[data-timezone="${timezone}"]`);
                 if (entry) {
                     const slider = entry.querySelector('input[type="range"]');
@@ -254,10 +256,11 @@ class TimeZoneManager {
                         const sliderValue = parseInt(slider.value);
                         const hours = Math.floor(sliderValue / 4);
                         const minutes = (sliderValue % 4) * 15;
-                        return `${timezone}@${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                        const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                        return city ? `${timezone}|${city}@${timeStr}` : `${timezone}@${timeStr}`;
                     }
                 }
-                return timezone;
+                return city ? `${timezone}|${city}` : timezone;
             });
             params.set('zones', timezones.join(','));
         }
@@ -370,8 +373,8 @@ class TimeZoneManager {
         this.markers = [];
         
         // Add markers for each timezone
-        this.timezones.forEach(timezone => {
-            const city = timezone.split('/').pop().replace(/_/g, ' ');
+        this.timezones.forEach(timezoneKey => {
+            const [timezone, city] = timezoneKey.split('|');
             const coordinates = this.getTimezoneCoordinates(timezone);
             
             if (coordinates) {
@@ -436,13 +439,14 @@ class TimeZoneManager {
             }
             
             // Add location headers with timezone offset
-            Array.from(this.timezones).forEach(timezone => {
-                const th = document.createElement('th');
+            Array.from(this.timezones).forEach(timezoneKey => {
+                const [timezone, city] = timezoneKey.split('|');
                 const tzData = this.getTimezoneData(timezone);
                 const date = new Date();
                 const offset = -date.getTimezoneOffset() / 60;
                 const tzOffset = this.getTimezoneOffset(timezone);
-                th.textContent = `${tzData.city}, ${tzData.country} (UTC${tzOffset >= 0 ? '+' : ''}${tzOffset})`;
+                const th = document.createElement('th');
+                th.textContent = `${city}, ${tzData.country} (UTC${tzOffset >= 0 ? '+' : ''}${tzOffset})`;
                 locationHeadersRow.appendChild(th);
             });
         }
@@ -468,7 +472,8 @@ class TimeZoneManager {
             row.appendChild(utcCell);
             
             // Add cells for each timezone
-            Array.from(this.timezones).forEach(timezone => {
+            Array.from(this.timezones).forEach(timezoneKey => {
+                const [timezone, city] = timezoneKey.split('|');
                 const cell = document.createElement('td');
                 cell.className = 'time-cell';
                 
@@ -508,10 +513,11 @@ class TimeZoneManager {
 
     showTimeDetails(utcDate, timezone) {
         const allTimezones = Array.from(this.timezones);
-        const details = allTimezones.map(tz => {
+        const details = allTimezones.map(timezoneKey => {
+            const [tz, city] = timezoneKey.split('|');
             const tzTime = moment.utc(utcDate).tz(tz);
             const tzData = this.getTimezoneData(tz);
-            return `${tzData.city}: ${tzTime.format(this.use24Hour ? 'HH:mm' : 'hh:mm A')}`;
+            return `${city}: ${tzTime.format(this.use24Hour ? 'HH:mm' : 'hh:mm A')}`;
         }).join('\n');
         
         alert(`Meeting times:\n${details}`);
@@ -555,8 +561,9 @@ class TimeZoneManager {
                         const selectedDiv = this.searchResults.querySelector('.selected');
                         if (selectedDiv) {
                             const timezone = selectedDiv.getAttribute('data-timezone');
+                            const city = selectedDiv.getAttribute('data-city');
                             if (timezone) {
-                                this.addTimezone(timezone);
+                                this.addTimezone(timezone, city);
                                 this.hideSearchResults();
                                 this.searchInput.value = '';
                             }
@@ -630,13 +637,15 @@ class TimeZoneManager {
         if (this.timezonesContainer) {
             this.timezonesContainer.addEventListener('input', (e) => {
                 if (e.target.classList.contains('timeline-slider')) {
-                    this.handleSliderEvent(e.target, e.target.closest('.timezone-entry').getAttribute('data-timezone'));
+                    const timezone = e.target.closest('.timezone-entry').getAttribute('data-timezone');
+                    this.handleSliderEvent(e.target, timezone);
                 }
             });
 
             this.timezonesContainer.addEventListener('change', (e) => {
                 if (e.target.classList.contains('timeline-slider')) {
-                    this.handleSliderEvent(e.target, e.target.closest('.timezone-entry').getAttribute('data-timezone'));
+                    const timezone = e.target.closest('.timezone-entry').getAttribute('data-timezone');
+                    this.handleSliderEvent(e.target, timezone);
                 }
             });
         }
@@ -651,7 +660,8 @@ class TimeZoneManager {
             this.searchResults.addEventListener('click', (e) => {
                 if (e.target.classList.contains('location-info')) {
                     const timezone = e.target.parentNode.getAttribute('data-timezone');
-                    this.addTimezone(timezone);
+                    const city = e.target.parentNode.getAttribute('data-city');
+                    this.addTimezone(timezone, city);
                     this.hideSearchResults();
                     this.searchInput.value = '';
                 }
@@ -814,12 +824,22 @@ class TimeZoneManager {
             return;
         }
         
-        const results = timezoneData.filter(item => 
-            item.city.toLowerCase().includes(searchTerm) ||
+        // First, find exact timezone matches
+        const timezoneMatches = timezoneData.filter(item => 
+            item.timezone.toLowerCase() === searchTerm
+        );
+
+        // Then find partial matches
+        const partialMatches = timezoneData.filter(item => 
+            (item.city.toLowerCase().includes(searchTerm) ||
             item.country.toLowerCase().includes(searchTerm) ||
             item.timezone.toLowerCase().includes(searchTerm) ||
-            item.utcOffset.toLowerCase().includes(searchTerm)
+            item.utcOffset.toLowerCase().includes(searchTerm)) &&
+            !timezoneMatches.includes(item)
         );
+
+        // Combine results with exact matches first
+        const results = [...timezoneMatches, ...partialMatches];
         
         this.showSearchResults(results);
     }
@@ -836,43 +856,57 @@ class TimeZoneManager {
             div.textContent = 'No results found';
             this.searchResults.appendChild(div);
         } else {
-            results.forEach(result => {
-                const div = document.createElement('div');
-                div.setAttribute('data-timezone', result.timezone);
-                div.classList.add('search-result');
-                
-                const flag = document.createElement('span');
-                const countryCode = countryFlags[result.country];
-                if (countryCode) {
-                    flag.className = `flag-icon flag-icon-${countryCode.toLowerCase()}`;
-                } else {
-                    flag.textContent = '🕐';
+            // Group results by timezone
+            const groupedResults = results.reduce((acc, result) => {
+                if (!acc[result.timezone]) {
+                    acc[result.timezone] = [];
                 }
-                
-                const locationInfo = document.createElement('div');
-                locationInfo.className = 'location-info';
-                
-                const city = document.createElement('div');
-                city.className = 'city';
-                city.textContent = `${result.city}, ${result.country}`;
-                
-                const timezone = document.createElement('div');
-                timezone.className = 'timezone';
-                timezone.textContent = `${result.timezone} (UTC${result.utcOffset})`;
-                
-                locationInfo.appendChild(city);
-                locationInfo.appendChild(timezone);
-                
-                div.appendChild(flag);
-                div.appendChild(locationInfo);
-                
-                div.addEventListener('click', () => {
-                    this.addTimezone(result.timezone);
-                    this.hideSearchResults();
-                    this.searchInput.value = '';
+                acc[result.timezone].push(result);
+                return acc;
+            }, {});
+
+            Object.entries(groupedResults).forEach(([timezone, items]) => {
+                items.forEach(result => {
+                    const div = document.createElement('div');
+                    div.setAttribute('data-timezone', result.timezone);
+                    div.setAttribute('data-city', result.city);
+                    div.classList.add('search-result');
+                    
+                    const flag = document.createElement('span');
+                    const countryCode = countryFlags[result.country];
+                    if (countryCode) {
+                        flag.className = `flag-icon flag-icon-${countryCode.toLowerCase()}`;
+                    } else {
+                        flag.textContent = '🕐';
+                    }
+                    
+                    const locationInfo = document.createElement('div');
+                    locationInfo.className = 'location-info';
+                    
+                    const city = document.createElement('div');
+                    city.className = 'city';
+                    city.textContent = `${result.city}, ${result.country}`;
+                    
+                    const timezone = document.createElement('div');
+                    timezone.className = 'timezone';
+                    timezone.textContent = `${result.timezone} (UTC${result.utcOffset})`;
+                    
+                    locationInfo.appendChild(city);
+                    locationInfo.appendChild(timezone);
+                    
+                    div.appendChild(flag);
+                    div.appendChild(locationInfo);
+                    
+                    div.addEventListener('click', () => {
+                        const selectedCity = result.city;
+                        const selectedTimezone = result.timezone;
+                        this.addTimezone(selectedTimezone, selectedCity);
+                        this.hideSearchResults();
+                        this.searchInput.value = '';
+                    });
+                    
+                    this.searchResults.appendChild(div);
                 });
-                
-                this.searchResults.appendChild(div);
             });
 
             // Select the first result by default
@@ -1370,16 +1404,18 @@ class TimeZoneManager {
         this.onStateChange();
     }
     
-    addTimezone(timezone) {
-        if (this.isValidTimezone(timezone) && !this.timezones.has(timezone)) {
-            this.timezones.add(timezone);
+    addTimezone(timezone, city = null) {
+        if (!this.isValidTimezone(timezone)) {
+            console.error('Invalid timezone:', timezone);
+            return;
+        }
+        
+        // Store both timezone and city information
+        const key = city ? `${timezone}|${city}` : timezone;
+        if (!this.timezones.has(key)) {
+            this.timezones.add(key);
             this.render();
             this.onStateChange();
-            
-            // Update map markers if we're in the map view
-            if (this.activeTab === 'world-map') {
-                this.updateMapMarkers();
-            }
         }
     }
 
@@ -1727,7 +1763,7 @@ class TimeZoneManager {
         }
 
         // Get the reference timezone (first in the list)
-        const referenceTimezone = timezones[0];
+        const referenceTimezone = timezones[0].split('|')[0];
         const referenceSlider = document.querySelector(`[data-timezone="${referenceTimezone}"] input[type="range"]`);
         
         if (!referenceSlider) {
@@ -1750,7 +1786,8 @@ class TimeZoneManager {
             .millisecond(0);
 
         let info = 'Current Time Zones:\n\n';
-        timezones.forEach(timezone => {
+        timezones.forEach(timezoneKey => {
+            const [timezone, city] = timezoneKey.split('|');
             const tzData = this.getTimezoneData(timezone);
             const tzMoment = referenceMoment.clone().tz(timezone);
             const dateStr = tzMoment.format('ddd, MMM D');
@@ -1758,7 +1795,7 @@ class TimeZoneManager {
             const offset = tzMoment.utcOffset() / 60;
             const offsetStr = `UTC${offset >= 0 ? '+' : ''}${offset}`;
             
-            info += `${tzData.city}, ${tzData.country}\n`;
+            info += `${city}, ${tzData.country}\n`;
             info += `${timezone} (${offsetStr})\n`;
             info += `${dateStr} at ${timeStr}\n\n`;
         });
@@ -1799,7 +1836,8 @@ class TimeZoneManager {
         });
     }
     
-    createTimezoneEntry(timezone) {
+    createTimezoneEntry(timezoneKey) {
+        const [timezone, city] = timezoneKey.split('|');
         const tzData = this.getTimezoneData(timezone);
         if (!tzData) return null;
 
@@ -1808,64 +1846,7 @@ class TimeZoneManager {
         const entry = document.createElement('div');
         entry.className = 'timezone-entry';
         entry.setAttribute('data-timezone', timezone);
-        
-        // Add CSS for horizontal alignment
-        const style = document.createElement('style');
-        style.textContent = `
-            .timezone-time {
-                display: flex;
-                flex-direction: column;
-                align-items: flex-end;
-            }
-            .timezone-time-row {
-                display: flex;
-                align-items: baseline;
-                gap: 8px;
-            }
-            .timezone-date {
-                color: #666;
-                font-size: 0.9em;
-            }
-            .current-time-container {
-                display: flex;
-                align-items: baseline;
-                gap: 8px;
-                font-size: 0.85em;
-                color: #666;
-                margin-top: 4px;
-            }
-            .current-time-label {
-                color: #999;
-                margin-right: 4px;
-                font-size: 0.82em;
-            }
-            .current-time-container .current-date {
-                font-size: 0.95em;
-            }
-            .timezone-date {
-                color: #666;
-                font-size: 1em;
-            }
-            .timezone-hour {
-                font-size: 1.3em;
-                font-weight: 500;
-            }
-            .search-results > div.selected {
-                background-color: #eef2ff;
-            }
-            .search-results > div:hover {
-                background-color: #f3f4f6;
-            }
-            .search-results > div {
-                padding: 0.75rem;
-                display: flex;
-                align-items: center;
-                gap: 0.75rem;
-                cursor: pointer;
-                transition: background-color 0.15s ease;
-            }
-        `;
-        document.head.appendChild(style);
+        entry.setAttribute('data-city', city);
         
         entry.innerHTML = `
             <div class="drag-handle">⋮⋮</div>
@@ -1873,7 +1854,7 @@ class TimeZoneManager {
                 <div class="timezone-left">
                     ${flagCode === 'un' ? '<span>🕐</span>' : `<span class="flag-icon flag-icon-${flagCode.toLowerCase()}"></span>`}
                     <div>
-                        <div class="timezone-name">${tzData.city}, ${tzData.country}</div>
+                        <div class="timezone-name">${city}, ${tzData.country}</div>
                         <div class="timezone-details">${timezone} (UTC${tzData.utcOffset})</div>
                     </div>
                 </div>
