@@ -441,7 +441,7 @@ class TimeZoneManager {
             // Add location headers with timezone offset
             Array.from(this.timezones).forEach(timezoneKey => {
                 const [timezone, city] = timezoneKey.split('|');
-                const tzData = this.getTimezoneData(timezone);
+                const tzData = this.getTimezoneData(timezone, city);
                 const date = new Date();
                 const offset = -date.getTimezoneOffset() / 60;
                 const tzOffset = this.getTimezoneOffset(timezone);
@@ -516,7 +516,7 @@ class TimeZoneManager {
         const details = allTimezones.map(timezoneKey => {
             const [tz, city] = timezoneKey.split('|');
             const tzTime = moment.utc(utcDate).tz(tz);
-            const tzData = this.getTimezoneData(tz);
+            const tzData = this.getTimezoneData(tz, city);
             return `${city}: ${tzTime.format(this.use24Hour ? 'HH:mm' : 'hh:mm A')}`;
         }).join('\n');
         
@@ -1487,6 +1487,24 @@ class TimeZoneManager {
         }
     }
     
+    getTimezoneData(timezone, city = null) {
+        // If we have both timezone and city, try to find exact match first
+        if (city) {
+            const exactMatch = timezoneData.find(item => 
+                item.timezone === timezone && item.city === city
+            );
+            if (exactMatch) return exactMatch;
+        }
+        
+        // If no exact match or no city provided, find first matching timezone
+        return timezoneData.find(item => item.timezone === timezone) || {
+            city: timezone,
+            country: '',
+            timezone: timezone,
+            utcOffset: ''
+        };
+    }
+    
     formatTimeForTimezone(timezone) {
         try {
             // If no reference time set, use current time
@@ -1542,15 +1560,6 @@ class TimeZoneManager {
                 timeStr: 'Invalid timezone'
             };
         }
-    }
-    
-    getTimezoneData(timezone) {
-        return timezoneData.find(item => item.timezone === timezone) || {
-            city: timezone,
-            country: '',
-            timezone: timezone,
-            utcOffset: ''
-        };
     }
     
     calculateSunrise(timezone) {
@@ -1790,7 +1799,7 @@ class TimeZoneManager {
         let info = 'Current Time Zones:\n\n';
         timezones.forEach(timezoneKey => {
             const [timezone, city] = timezoneKey.split('|');
-            const tzData = this.getTimezoneData(timezone);
+            const tzData = this.getTimezoneData(timezone, city);
             const tzMoment = referenceMoment.clone().tz(timezone);
             const dateStr = tzMoment.format('ddd, MMM D');
             const timeStr = this.use24Hour ? tzMoment.format('HH:mm') : tzMoment.format('hh:mm A');
@@ -1840,7 +1849,7 @@ class TimeZoneManager {
     
     createTimezoneEntry(timezoneKey) {
         const [timezone, city] = timezoneKey.split('|');
-        const tzData = this.getTimezoneData(timezone);
+        const tzData = this.getTimezoneData(timezone, city);
         if (!tzData) return null;
 
         const flagCode = countryFlags[tzData.country] || 'un'; // Use UN flag as fallback
