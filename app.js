@@ -96,7 +96,7 @@ class TimeZoneManager {
                             if (!this.pendingTimes) {
                                 this.pendingTimes = new Map();
                             }
-                            this.pendingTimes.set(timezone, sliderValue);
+                            this.pendingTimes.set(key, sliderValue);
                         }
                     } else {
                         //console.log('Invalid timezone:', timezone);
@@ -147,10 +147,11 @@ class TimeZoneManager {
                 //console.log('Applying pending times:', this.pendingTimes);
                 setTimeout(() => {
                     // Get first timezone as reference
-                    const [refZone, refValue] = Array.from(this.pendingTimes.entries())[0];
-                    //console.log('Using reference timezone:', refZone, 'with value:', refValue);
+                    const [refKey, refValue] = Array.from(this.pendingTimes.entries())[0];
+                    //console.log('Using reference timezone:', refKey, 'with value:', refValue);
                     
-                    const entry = document.querySelector(`[data-timezone="${refZone}"]`);
+                    const [refTimezone, refCity] = refKey.split('|');
+                    const entry = document.querySelector(`[data-timezone="${refTimezone}"][data-city="${refCity || ''}"]`);
                     if (entry) {
                         const slider = entry.querySelector('input[type="range"]');
                         if (slider) {
@@ -159,7 +160,7 @@ class TimeZoneManager {
                             // Set as active slider and trigger input handler
                             this.activeSlider = slider;
                             slider.value = refValue;
-                            this.handleSliderEvent(slider, refZone);
+                            this.handleSliderEvent(slider, refTimezone, refCity);
                         }
                     }
                     
@@ -257,10 +258,11 @@ class TimeZoneManager {
                         const hours = Math.floor(sliderValue / 4);
                         const minutes = (sliderValue % 4) * 15;
                         const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                        return city ? `${timezone}|${city}@${timeStr}` : `${timezone}@${timeStr}`;
+                        return city ? `${encodeURIComponent(timezone)}|${encodeURIComponent(city)}@${timeStr}` : `${encodeURIComponent(timezone)}@${timeStr}`;
                     }
+                    return city ? `${encodeURIComponent(timezone)}|${encodeURIComponent(city)}` : encodeURIComponent(timezone);
                 }
-                return city ? `${timezone}|${city}` : timezone;
+                return city ? `${encodeURIComponent(timezone)}|${encodeURIComponent(city)}` : encodeURIComponent(timezone);
             });
             params.set('zones', timezones.join(','));
         }
@@ -533,7 +535,7 @@ class TimeZoneManager {
             this.searchInput.addEventListener('keydown', (e) => {
                 if (!this.searchResults || !this.searchResults.classList.contains('active')) return;
                 
-                const results = Array.from(this.searchResults.children).filter(div => !div.classList.contains('no-results'));
+                const results = Array.from(this.searchResults.children).filter(div => div.classList.contains('search-result'));
                 if (results.length === 0) return;
 
                 const currentIndex = results.findIndex(div => div.classList.contains('selected'));
@@ -558,7 +560,7 @@ class TimeZoneManager {
                         break;
                     case 'Enter':
                         e.preventDefault();
-                        const selectedDiv = this.searchResults.querySelector('.selected');
+                        const selectedDiv = this.searchResults.querySelector('.search-result.selected');
                         if (selectedDiv) {
                             const timezone = selectedDiv.getAttribute('data-timezone');
                             const city = selectedDiv.getAttribute('data-city');
@@ -637,15 +639,19 @@ class TimeZoneManager {
         if (this.timezonesContainer) {
             this.timezonesContainer.addEventListener('input', (e) => {
                 if (e.target.classList.contains('timeline-slider')) {
-                    const timezone = e.target.closest('.timezone-entry').getAttribute('data-timezone');
-                    this.handleSliderEvent(e.target, timezone);
+                    const entry = e.target.closest('.timezone-entry');
+                    const timezone = entry.getAttribute('data-timezone');
+                    const city = entry.getAttribute('data-city');
+                    this.handleSliderEvent(e.target, timezone, city);
                 }
             });
 
             this.timezonesContainer.addEventListener('change', (e) => {
                 if (e.target.classList.contains('timeline-slider')) {
-                    const timezone = e.target.closest('.timezone-entry').getAttribute('data-timezone');
-                    this.handleSliderEvent(e.target, timezone);
+                    const entry = e.target.closest('.timezone-entry');
+                    const timezone = entry.getAttribute('data-timezone');
+                    const city = entry.getAttribute('data-city');
+                    this.handleSliderEvent(e.target, timezone, city);
                 }
             });
         }
@@ -658,9 +664,10 @@ class TimeZoneManager {
         
         if (this.searchResults) {
             this.searchResults.addEventListener('click', (e) => {
-                if (e.target.classList.contains('location-info')) {
-                    const timezone = e.target.parentNode.getAttribute('data-timezone');
-                    const city = e.target.parentNode.getAttribute('data-city');
+                const resultDiv = e.target.closest('.search-result');
+                if (resultDiv) {
+                    const timezone = resultDiv.getAttribute('data-timezone');
+                    const city = resultDiv.getAttribute('data-city');
                     if (timezone) {
                         this.addTimezone(timezone, city);
                         this.hideSearchResults();
@@ -678,9 +685,10 @@ class TimeZoneManager {
         }
     }
 
-    handleSliderEvent(slider, timezone) {
+    handleSliderEvent(slider, timezone, city) {
         //console.log('[handleSliderEvent] Starting with:', {
         //     timezone,
+        //     city,
         //     sliderValue: slider.value,
         //     selectedDate: this.selectedDate
         // });
@@ -710,6 +718,7 @@ class TimeZoneManager {
 
             //console.log('[handleSliderEvent] Time conversion:', {
             //     timezone,
+            //     city,
             //     originalHours: hours,
             //     originalMinutes: minutes,
             //     sourceMomentISO: sourceMoment.toISOString(),
@@ -717,7 +726,7 @@ class TimeZoneManager {
             // });
 
             // Update all other timezones based on this time
-            this.updateOtherTimezones(timezone, utcDate);
+            this.updateOtherTimezones(timezone, city, utcDate);
             
             // Update URL to reflect new time
             this.debouncedUpdateUrl();
@@ -726,7 +735,7 @@ class TimeZoneManager {
         }
     }
 
-    updateOtherTimezones(sourceTimezone, sourceDate) {
+    updateOtherTimezones(sourceTimezone, sourceCity, sourceDate) {
         if (this.isUpdating) return;
         this.isUpdating = true;
 
@@ -736,11 +745,13 @@ class TimeZoneManager {
 
             //console.log('[updateOtherTimezones] Starting update', {
             //     sourceTimezone,
+            //     sourceCity,
             //     sourceDate: sourceMoment.toISOString()
             // });
 
             entries.forEach(entry => {
                 const timezone = entry.getAttribute('data-timezone');
+                const city = entry.getAttribute('data-city');
                 if (!timezone) return;
 
                 // Convert the source date to the target timezone
@@ -753,7 +764,6 @@ class TimeZoneManager {
                     minute: '2-digit',
                     hour12: !this.use24Hour
                 });
-
                 const dateFormatter = new Intl.DateTimeFormat('en-US', {
                     timeZone: timezone,
                     weekday: 'short',
@@ -768,6 +778,7 @@ class TimeZoneManager {
 
                 //console.log('[updateOtherTimezones] Time components:', {
                 //     timezone,
+                //     city,
                 //     hours24h,
                 //     minutes,
                 //     sliderValue
@@ -777,7 +788,7 @@ class TimeZoneManager {
                 const slider = entry.querySelector('.timeline-slider');
                 if (slider) {
                     // Only update the slider if it's not the source timezone or if it's a programmatic update
-                    if (timezone !== sourceTimezone || !this.activeSlider) {
+                    if (timezone !== sourceTimezone || city !== sourceCity || !this.activeSlider) {
                         slider.value = sliderValue;
                     }
                 }
@@ -790,6 +801,7 @@ class TimeZoneManager {
 
                 //console.log('[updateOtherTimezones] Updated timezone:', {
                 //     timezone,
+                //     city,
                 //     sliderValue,
                 //     displayTime: timeFormatter.format(sourceDate),
                 //     displayDate: dateFormatter.format(sourceDate)
@@ -987,10 +999,11 @@ class TimeZoneManager {
             const firstEntry = document.querySelector('.timezone-entry');
             if (firstEntry) {
                 const timezone = firstEntry.getAttribute('data-timezone');
+                const city = firstEntry.getAttribute('data-city');
                 const slider = firstEntry.querySelector('.timeline-slider');
                 if (slider && timezone) {
                     // Use the current slider value to maintain the selected time
-                    this.handleSliderEvent(slider, timezone);
+                    this.handleSliderEvent(slider, timezone, city);
                 }
             } else {
                 // If no timezone entries exist, just update all timezones
@@ -1029,7 +1042,7 @@ class TimeZoneManager {
         }
     }
     
-    initializeDragAndDrop(element, timezone) {
+    initializeDragAndDrop(element, timezoneKey) {
         const dragHandle = element.querySelector('.drag-handle');
         
         dragHandle.addEventListener('mousedown', () => {
@@ -1042,7 +1055,7 @@ class TimeZoneManager {
         
         element.addEventListener('dragstart', (e) => {
             this.draggedElement = element;
-            this.draggedTimezone = timezone;
+            this.draggedTimezone = timezoneKey;
             element.classList.add('dragging');
             
             // Store the current slider value
@@ -1063,7 +1076,8 @@ class TimeZoneManager {
                 const slider = this.draggedElement.querySelector('.timeline-slider');
                 if (slider) {
                     slider.value = this.draggedSliderValue;
-                    this.handleSliderEvent(slider, this.draggedTimezone);
+                    const [timezone, city] = this.draggedTimezone.split('|');
+                    this.handleSliderEvent(slider, timezone, city);
                 }
             }
             
@@ -1124,9 +1138,11 @@ class TimeZoneManager {
         }
 
         // Update the timezones Set to match the new order
-        const newOrder = Array.from(this.timezonesContainer.children).map(entry => 
-            entry.getAttribute('data-timezone')
-        );
+        const newOrder = Array.from(this.timezonesContainer.children).map(entry => {
+            const timezone = entry.getAttribute('data-timezone');
+            const city = entry.getAttribute('data-city');
+            return city ? `${timezone}|${city}` : timezone;
+        });
         this.timezones = new Set(newOrder);
     }
 
@@ -1170,9 +1186,11 @@ class TimeZoneManager {
         const entries = document.querySelectorAll('.timezone-entry');
         entries.forEach(entry => {
             const timezone = entry.getAttribute('data-timezone');
+            const city = entry.getAttribute('data-city');
             const slider = entry.querySelector('.timeline-slider');
             if (slider) {
-                this.updateTimezoneDisplay(entry, timezone, parseInt(slider.value));
+                this.updateTimezoneDisplay(entry, timezone, parseInt(slider.value), this.selectedDate);
+                this.handleSliderEvent(slider, timezone, city);
             }
         });
     }
@@ -1408,12 +1426,21 @@ class TimeZoneManager {
         }
     }
 
-    removeTimezone(timezone) {
-        // Find and remove the timezone entry with the matching timezone part
-        const timezoneToRemove = Array.from(this.timezones).find(key => {
-            const [tz] = key.split('|');
-            return tz === timezone;
-        });
+    removeTimezone(timezone, city = null) {
+        // If city is provided, only remove the specific timezone+city combination
+        if (city) {
+            const key = `${timezone}|${city}`;
+            if (this.timezones.has(key)) {
+                this.timezones.delete(key);
+                this.render();
+                this.onStateChange();
+                return;
+            }
+            return; // Don't proceed to remove the base timezone
+        }
+        
+        // If no city provided, only remove timezone entries without a city
+        const timezoneToRemove = Array.from(this.timezones).find(key => key === timezone);
         
         if (timezoneToRemove) {
             this.timezones.delete(timezoneToRemove);
@@ -1899,7 +1926,7 @@ class TimeZoneManager {
         if (removeButton) {
             removeButton.addEventListener('click', (e) => {
                 e.stopPropagation();
-                this.removeTimezone(timezone);
+                this.removeTimezone(timezone, city);
             });
         }
 
@@ -1944,7 +1971,7 @@ class TimeZoneManager {
         }
         
         // Initialize drag and drop
-        this.initializeDragAndDrop(entry, timezone);
+        this.initializeDragAndDrop(entry, timezoneKey);
         
         return entry;
     }
