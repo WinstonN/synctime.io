@@ -1162,6 +1162,16 @@ const timezoneData = [
         coordinates: { latitude: 42.3601, longitude: -71.0589 }
     },
     {
+        city: "New York",
+        country: "United States",
+        timezone: "America/New_York",
+        utcOffset: "-05:00",
+        standardOffset: "-05:00",
+        dstOffset: "-04:00",
+        usesDST: true,
+        coordinates: { latitude: 40.7128, longitude: -74.0060 }
+    },
+    {
         city: "Seattle",
         country: "United States",
         timezone: "America/Los_Angeles",
@@ -1174,13 +1184,6 @@ const timezoneData = [
         timezone: "America/New_York",
         utcOffset: "-05:00",
         coordinates: { latitude: 25.7617, longitude: -80.1918 }
-    },
-    {
-        city: "Vancouver",
-        country: "Canada",
-        timezone: "America/Vancouver",
-        utcOffset: "-08:00",
-        coordinates: { latitude: 49.2827, longitude: -123.1207 }
     },
     {
         city: "Toronto",

@@ -1317,6 +1317,12 @@ main {
     padding: 10px 0;
 }
 
+.logo-container a {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+}
+
 .logo-container .material-icons {
     color: #3498db;
     font-size: 40px;
