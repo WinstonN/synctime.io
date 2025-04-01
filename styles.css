@@ -458,7 +458,7 @@ body {
     grid-column: 1 / -1;
     margin-top: 1rem;
     position: relative;
-    padding: 0 1rem;
+    padding: 0 0.2rem;
 }
 
 .timeline-hours {
@@ -1270,7 +1270,7 @@ main {
     text-transform: uppercase;
 }
 
-.features {
+/* .features {
   margin-top: 2rem;
   padding: 1.5rem;
   background: #fff;
@@ -1302,7 +1302,7 @@ main {
   left: 0;
   color: #007bff;
   font-size: 1.2rem;
-}
+} */
 
 .empty-state {
   text-align: center;
@@ -1343,6 +1343,16 @@ main {
 
 /* FAQ Section */
 .faq {
+    /* margin-top: 3rem; */
+    /* text-align: center; */
+    padding: 1.5rem;
+}
+
+.faq h3 {
+    margin-top: 0.5rem;
+}
+
+/* .faq {
     margin-top: 2rem;
     padding: 1.5rem;
     background: #fff;
@@ -1377,10 +1387,15 @@ main {
 .faq-item p {
     color: var(--text-color);
     line-height: 1.6;
-}
+} */
 
 /* Footer */
 footer {
+    margin-top: 3rem;
+    text-align: center;
+    padding: 1.5rem;
+}
+/* footer {
     margin-top: 3rem;
     text-align: center;
     padding: 1.5rem;
@@ -1397,10 +1412,22 @@ footer p {
 
 footer p:last-child {
     margin-bottom: 0;
-}
+} */
 
 /* Main heading */
-.features h1 {
+.features {
+    /* margin-top: 3rem; */
+    /* text-align: center; */
+    padding: 1.5rem;
+}
+
+.features h2 {
+    margin-top: 1.5rem;
+    /* text-align: center; */
+    /* padding: 1.5rem; */
+}
+
+/* .features h1 {
     font-size: 1.8rem;
     margin-bottom: 1rem;
     color: var(--primary-color);
@@ -1409,7 +1436,7 @@ footer p:last-child {
 .features p {
     margin-bottom: 1.5rem;
     font-size: 1.1rem;
-}
+} */
 
 /* Main navigation */
 .main-nav {
