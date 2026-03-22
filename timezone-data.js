@@ -114,7 +114,7 @@ const timezoneData = [
     {
         city: "UTC+2",
         country: "Eastern European Time",
-        timezone: "Europe/Kiev",
+        timezone: "Europe/Kyiv",
         utcOffset: "+02:00",
         coordinates: { latitude: 50.4501, longitude: 30.5234 }
     },
@@ -602,28 +602,28 @@ const timezoneData = [
         coordinates: { latitude: 59.9311, longitude: 30.3609 }
     },
     {
-        city: "Kiev",
+        city: "Kyiv",
         country: "Ukraine",
-        timezone: "Europe/Kiev",
+        timezone: "Europe/Kyiv",
         utcOffset: "+02:00",
         coordinates: { latitude: 50.4501, longitude: 30.5234 }
     },
     {
         city: "Kharkiv",
         country: "Ukraine",
-        timezone: "Europe/Kiev",
+        timezone: "Europe/Kyiv",
         utcOffset: "+02:00"
     },
     {
         city: "Lviv",
         country: "Ukraine",
-        timezone: "Europe/Kiev",
+        timezone: "Europe/Kyiv",
         utcOffset: "+02:00"
     },
     {
-        city: "Odessa",
+        city: "Odesa",
         country: "Ukraine",
-        timezone: "Europe/Kiev",
+        timezone: "Europe/Kyiv",
         utcOffset: "+02:00"
     },
     {
