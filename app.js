@@ -182,7 +182,20 @@ class TimeZoneManager {
 
     render() {
         if (!this.timezonesContainer) return;
-        
+
+        // Snapshot slider values before clearing the DOM so we can restore them.
+        // Key: "timezone|city" (or just "timezone"), Value: slider integer value.
+        const sliderSnapshot = new Map();
+        document.querySelectorAll('.timezone-entry').forEach(entry => {
+            const tz   = entry.getAttribute('data-timezone');
+            const city = entry.getAttribute('data-city');
+            const slider = entry.querySelector('.timeline-slider');
+            if (tz && slider) {
+                const key = city ? `${tz}|${city}` : tz;
+                sliderSnapshot.set(key, parseInt(slider.value));
+            }
+        });
+
         // Clear existing entries
         this.timezonesContainer.innerHTML = '';
         
@@ -201,7 +214,33 @@ class TimeZoneManager {
             
             this.timezonesContainer.appendChild(entry);
         });
-        
+
+        // Restore slider positions from snapshot, then sync all other sliders
+        // from the first (reference) timezone so each one shows its correct local time.
+        const allEntries = Array.from(this.timezonesContainer.querySelectorAll('.timezone-entry'));
+        if (allEntries.length > 0) {
+            // Restore every slider that existed before the re-render
+            allEntries.forEach(entry => {
+                const tz   = entry.getAttribute('data-timezone');
+                const city = entry.getAttribute('data-city');
+                const key  = city ? `${tz}|${city}` : tz;
+                const slider = entry.querySelector('.timeline-slider');
+                if (slider && sliderSnapshot.has(key)) {
+                    slider.value = sliderSnapshot.get(key);
+                }
+            });
+
+            // Drive all sliders from the first (reference) entry so every
+            // timezone shows the correct local equivalent of that moment.
+            const firstEntry  = allEntries[0];
+            const firstTz     = firstEntry.getAttribute('data-timezone');
+            const firstCity   = firstEntry.getAttribute('data-city');
+            const firstSlider = firstEntry.querySelector('.timeline-slider');
+            if (firstSlider) {
+                this.handleSliderEvent(firstSlider, firstTz, firstCity);
+            }
+        }
+
         // Update the time grid if we're in meeting planner mode
         const activeTab = document.querySelector('.tab-button.active');
         if (activeTab && activeTab.getAttribute('data-tab') === 'meeting-planner') {
